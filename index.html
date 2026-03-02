@@ -1091,7 +1091,7 @@ function buildMap(world) {
       .append("path")
         .attr("d", "M0,1 L7,4 L0,7 Z")
         .attr("fill", color)
-        .attr("opacity", 0.85);
+        .attr("opacity", 0.9);
   });
 
   // ── MAIN ZOOMABLE GROUP ────────────────────────────────────
@@ -1124,9 +1124,10 @@ function buildMap(world) {
     .data(FLOWS)
     .join("path")
     .attr("class", d => "flow-line" + (d.policy === "potential" ? " potential" : ""))
-    .attr("d", d => flowPath(d))
+    .attr("d", d => flowPathSplit(d))
     .attr("stroke", d => flowColor(d.policy))
     .attr("stroke-width", d => flowWidth(d, currentScenario, currentDemand))
+    .attr("marker-mid", d => `url(#arrow-${d.policy === "standard" ? "standard" : d.policy})`)
     .attr("opacity", d => d.policy === "potential" ? 0.35 : 0.55)
     .on("mouseover", function(event, d) {
       if (!this.style.display || this.style.display === "none") return;
@@ -1145,24 +1146,6 @@ function buildMap(world) {
     .on("mouseout", function(event, d) {
       d3.select(this).attr("opacity", d.policy === "potential" ? 0.35 : 0.55);
       hideTooltip();
-    });
-
-  // ── MID-LINE ARROWS ────────────────────────────────────────
-  // Midpoint and tangent computed analytically from arc geometry —
-  // no DOM queries, works regardless of render timing or sandboxing.
-  const arrowsG = mapG.append("g").attr("class", "flow-arrows").attr("pointer-events", "none");
-
-  arrowMarkers = arrowsG.selectAll("path")
-    .data(FLOWS)
-    .join("path")
-    .attr("class", "mid-arrow")
-    .attr("d", "M-4,-3 L4,0 L-4,3 Z")
-    .attr("fill", d => flowColor(d.policy))
-    .attr("opacity", 0.85)
-    .attr("transform", d => {
-      const m = getArcMidpointAnalytic(d);
-      if (!m) return "scale(0)";
-      return `translate(${m.x},${m.y}) rotate(${m.angle})`;
     });
 
   // ── NODES ──────────────────────────────────────────────────
@@ -1247,46 +1230,9 @@ function shortName(name) {
 // starting at x1,y1 with radius r = dist * 0.65 (our curvature factor).
 // Derivation: find the arc center from perpendicular bisector + radius,
 // then rotate the start-to-center vector by half the sweep angle.
-function getArcMidpointAnalytic(flowDatum) {
-  const src = NODES[flowDatum.source];
-  const tgt = NODES[flowDatum.target];
-  if (!src || !tgt) return null;
-
-  const [x1, y1] = projection(src.coords);
-  const [x2, y2] = projection(tgt.coords);
-  const dx = x2 - x1, dy = y2 - y1;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist < 1) return null;
-
-  // The arc curves upward (sweep=1). Approximate it with a quadratic Bezier
-  // whose control point sits perpendicular to the chord midpoint, offset
-  // by the same bulge the SVG arc produces (approx r * 0.65 * 0.3 works well).
-  const mx = (x1 + x2) / 2;
-  const my = (y1 + y2) / 2;
-
-  // Perpendicular to chord, pointing "upward" in the arc's sweep direction.
-  // SVG sweep-flag=1 curves to the right of the direction of travel.
-  // Perpendicular rightward of (dx,dy) is (dy, -dx) normalised.
-  const bulge = dist * 0.18; // controls how far off-chord the control point sits
-  const cpx = mx + (dy / dist) * bulge;
-  const cpy = my + (-dx / dist) * bulge;
-
-  // Quadratic Bezier midpoint at t=0.5:
-  // B(0.5) = 0.25*P0 + 0.5*CP + 0.25*P1
-  const midX = 0.25 * x1 + 0.5 * cpx + 0.25 * x2;
-  const midY = 0.25 * y1 + 0.5 * cpy + 0.25 * y2;
-
-  // Tangent at t=0.5 of quadratic Bezier:
-  // B'(0.5) = (CP - P0)*0.5*2 + (P1 - CP)*0.5*2  simplified: (P1 - P0) * ... 
-  // = 2*(1-t)*(CP-P0) + 2*t*(P1-CP) at t=0.5
-  // = (CP - P0) + (P1 - CP) = P1 - P0
-  // Tangent direction at midpoint is simply P1 - P0 for quadratic Bezier at t=0.5
-  const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
-
-  return { x: midX, y: midY, angle };
-}
-
-function flowPath(d) {
+// Split arc path: two half-arcs with an explicit midpoint coordinate.
+// SVG marker-mid fires exactly at that coordinate, perfectly on the line.
+function flowPathSplit(d) {
   const src = NODES[d.source];
   const tgt = NODES[d.target];
   if (!src || !tgt) return "";
@@ -1294,17 +1240,30 @@ function flowPath(d) {
   const [x2, y2] = projection(tgt.coords);
   const dx = x2 - x1, dy = y2 - y1;
   const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist === 0) return "";
+  if (dist < 1) return "";
 
-  // Shorten endpoint by target node radius + arrow clearance
-  // so the arrowhead sits outside the circle, not hidden under it
-  const tgtRadius = nodeRadius(tgt) + 4;
-  const ratio = (dist - tgtRadius) / dist;
+  // Shorten to stop before target node edge
+  const tgtR = nodeRadius(tgt) + 4;
+  const ratio = (dist - tgtR) / dist;
   const ex = x1 + dx * ratio;
   const ey = y1 + dy * ratio;
 
   const dr = dist * 0.65;
-  return `M${x1},${y1}A${dr},${dr} 0 0,1 ${ex},${ey}`;
+
+  // Find midpoint on the arc by bisecting: use a temporary full arc
+  // and pick the point at the perpendicular bisector of the chord,
+  // offset by the arc's bulge. For sweep=1 the bulge goes rightward
+  // of the travel direction: perpendicular is (dy, -dx) normalised.
+  const mx = (x1 + ex) / 2 + (dy / dist) * dist * 0.18;
+  const my = (y1 + ey) / 2 + (-dx / dist) * dist * 0.18;
+
+  // Two half-arcs through the midpoint — marker-mid fires at mx,my
+  return `M${x1},${y1} A${dr},${dr} 0 0,1 ${mx},${my} A${dr},${dr} 0 0,1 ${ex},${ey}`;
+}
+
+function flowPath(d) {
+  // Simple single arc — kept for resize recalc reference
+  return flowPathSplit(d);
 }
 
 // nodeRadius helper that accepts a node data object directly (for flowPath use)
@@ -1355,16 +1314,8 @@ function updateScenario(scenario) {
       return null;
     });
 
-  // Sync arrow visibility with flow visibility
-  if (arrowMarkers) {
-    arrowMarkers.style("display", d => {
-      const vol = getScenarioVolume(d, scenario, currentDemand);
-      if (d.policy === "potential" && scenario !== "western_buildout" && vol === 0) return "none";
-      if ((isPlannedNode(d.source) || isPlannedNode(d.target)) && !shouldShowPlannedNode(scenario)) return "none";
-      if (vol < 0.05) return "none";
-      return null;
-    });
-  }
+  // Sync arrow visibility with flow visibility — marker-mid is part of the path now,
+  // so this is handled automatically by flowLines display changes above.
 
   // Update node visibility (planned nodes)
   nodeGroups.style("display", d => {
@@ -1403,7 +1354,7 @@ function applyLayerFilter() {
   };
 
   flowLines.classed("faded", fadeFn);
-  if (arrowMarkers) arrowMarkers.classed("faded", fadeFn);
+  // marker-mid arrows are embedded in flowLines paths — they fade with the line automatically.
 
   if (nodeGroups) {
     nodeGroups.style("opacity", d => {
@@ -1472,15 +1423,10 @@ window.addEventListener("resize", () => {
     mapG.selectAll(".graticule").attr("d", pathGen);
     mapG.selectAll(".country").attr("d", pathGen);
   }
-  if (flowLines) flowLines.attr("d", d => flowPath(d));
+  if (flowLines) flowLines.attr("d", d => flowPathSplit(d));
   if (nodeGroups) nodeGroups.attr("transform", d => {
-    const [px,py] = projection(d.coords);
+    const [px, py] = projection(d.coords);
     return `translate(${px},${py})`;
-  });
-  if (arrowMarkers) arrowMarkers.attr("transform", d => {
-    const m = getArcMidpointAnalytic(d);
-    if (!m) return "scale(0)";
-    return `translate(${m.x},${m.y}) rotate(${m.angle})`;
   });
 });
 </script>
