@@ -1148,33 +1148,19 @@ function buildMap(world) {
     });
 
   // ── MID-LINE ARROWS ────────────────────────────────────────
-  // Placed at t=0.5 along each arc. Uses a dummy <path> in the
-  // SVG to call getPointAtLength() for accurate arc midpoint + angle.
+  // Midpoint and tangent computed analytically from arc geometry —
+  // no DOM queries, works regardless of render timing or sandboxing.
   const arrowsG = mapG.append("g").attr("class", "flow-arrows").attr("pointer-events", "none");
-
-  // Scratch path element for midpoint calculation
-  const scratchPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-
-  function getArcMidpoint(flowDatum) {
-    const d = flowPathFull(flowDatum); // full path to center (not shortened)
-    if (!d) return null;
-    scratchPath.setAttribute("d", d);
-    const len = scratchPath.getTotalLength();
-    const mid = scratchPath.getPointAtLength(len * 0.5);
-    const before = scratchPath.getPointAtLength(len * 0.5 - 1);
-    const angle = Math.atan2(mid.y - before.y, mid.x - before.x) * 180 / Math.PI;
-    return { x: mid.x, y: mid.y, angle };
-  }
 
   arrowMarkers = arrowsG.selectAll("path")
     .data(FLOWS)
     .join("path")
     .attr("class", "mid-arrow")
-    .attr("d", "M-5,-3.5 L5,0 L-5,3.5 Z")  // small triangle, centered at origin
+    .attr("d", "M-4,-3 L4,0 L-4,3 Z")
     .attr("fill", d => flowColor(d.policy))
     .attr("opacity", 0.85)
     .attr("transform", d => {
-      const m = getArcMidpoint(d);
+      const m = getArcMidpointAnalytic(d);
       if (!m) return "scale(0)";
       return `translate(${m.x},${m.y}) rotate(${m.angle})`;
     });
@@ -1257,18 +1243,61 @@ function shortName(name) {
   return map[name] || name;
 }
 
-function flowPathFull(d) {
-  // Full arc to center — used for midpoint/angle calculation only
-  const src = NODES[d.source];
-  const tgt = NODES[d.target];
-  if (!src || !tgt) return "";
+// Pure geometry: midpoint and tangent angle of SVG arc A rx,ry 0 0,1 x2,y2
+// starting at x1,y1 with radius r = dist * 0.65 (our curvature factor).
+// Derivation: find the arc center from perpendicular bisector + radius,
+// then rotate the start-to-center vector by half the sweep angle.
+function getArcMidpointAnalytic(flowDatum) {
+  const src = NODES[flowDatum.source];
+  const tgt = NODES[flowDatum.target];
+  if (!src || !tgt) return null;
+
   const [x1, y1] = projection(src.coords);
   const [x2, y2] = projection(tgt.coords);
   const dx = x2 - x1, dy = y2 - y1;
   const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist === 0) return "";
-  const dr = dist * 0.65;
-  return `M${x1},${y1}A${dr},${dr} 0 0,1 ${x2},${y2}`;
+  if (dist < 1) return null;
+
+  const r = dist * 0.65; // must match flowPath / flowPathFull curvature
+
+  // Midpoint of chord
+  const mx = (x1 + x2) / 2;
+  const my = (y1 + y2) / 2;
+
+  // Half-chord length
+  const halfChord = dist / 2;
+
+  // Distance from chord midpoint to arc center
+  // For sweep-flag=1 (right-hand arc), center is to the right of direction of travel
+  const h = Math.sqrt(Math.max(0, r * r - halfChord * halfChord));
+
+  // Unit perpendicular to chord (rotated 90° clockwise for sweep=1)
+  const px = dy / dist;
+  const py = -dx / dist;
+
+  // Arc center
+  const cx = mx + h * px;
+  const cy = my + h * py;
+
+  // Angles from center to start and end points
+  const a1 = Math.atan2(y1 - cy, x1 - cx);
+  const a2 = Math.atan2(y2 - cy, x2 - cx);
+
+  // For sweep-flag=1, angle increases (clockwise in SVG y-down coords)
+  let sweep = a2 - a1;
+  if (sweep < 0) sweep += 2 * Math.PI;
+
+  // Mid-angle
+  const am = a1 + sweep / 2;
+
+  // Point on arc at mid-angle
+  const midX = cx + r * Math.cos(am);
+  const midY = cy + r * Math.sin(am);
+
+  // Tangent at mid-angle: perpendicular to radius, in direction of sweep
+  const tangentAngleDeg = (am + Math.PI / 2) * 180 / Math.PI;
+
+  return { x: midX, y: midY, angle: tangentAngleDeg };
 }
 
 function flowPath(d) {
@@ -1461,6 +1490,11 @@ window.addEventListener("resize", () => {
   if (nodeGroups) nodeGroups.attr("transform", d => {
     const [px,py] = projection(d.coords);
     return `translate(${px},${py})`;
+  });
+  if (arrowMarkers) arrowMarkers.attr("transform", d => {
+    const m = getArcMidpointAnalytic(d);
+    if (!m) return "scale(0)";
+    return `translate(${m.x},${m.y}) rotate(${m.angle})`;
   });
 });
 </script>
