@@ -56,22 +56,22 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 16px 28px;
+      padding: 10px 24px;
       border-bottom: 1px solid var(--border);
       background: var(--bg2);
     }
     .header-left h1 {
-      font-size: 1.05rem;
+      font-size: 0.95rem;
       font-weight: 600;
       color: var(--text-bright);
       letter-spacing: 0.02em;
     }
     .header-left h1 span { color: #4a9eca; }
     .header-left p {
-      font-size: 0.72rem;
+      font-size: 0.68rem;
       color: var(--text-dim);
       font-family: var(--mono);
-      margin-top: 2px;
+      margin-top: 1px;
     }
     .header-right {
       display: flex;
@@ -80,10 +80,10 @@
     }
     .brand-tag {
       font-family: var(--mono);
-      font-size: 0.65rem;
+      font-size: 0.62rem;
       color: var(--text-dim);
       border: 1px solid var(--border2);
-      padding: 4px 10px;
+      padding: 3px 9px;
       border-radius: 3px;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -92,9 +92,9 @@
     /* ── LAYOUT ── */
     .app {
       display: grid;
-      grid-template-columns: 240px 1fr 280px;
+      grid-template-columns: 220px 1fr 260px;
       grid-template-rows: 1fr;
-      height: calc(100vh - 57px);
+      height: calc(100vh - 49px);
     }
 
     /* ── LEFT PANEL ── */
@@ -240,7 +240,71 @@
       flex-shrink: 0;
     }
 
-    /* ── MAP CENTER ── */
+    /* ── ZOOM CONTROLS ── */
+    .zoom-controls {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 100;
+    }
+    .zoom-btn {
+      background: rgba(13,20,32,0.92);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      backdrop-filter: blur(8px);
+    }
+    .zoom-btn:hover {
+      background: rgba(74,158,202,0.2);
+      border-color: #4a9eca;
+      color: #4a9eca;
+    }
+
+    /* Region zoom buttons */
+    .region-controls {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      display: flex;
+      gap: 5px;
+      z-index: 100;
+    }
+    .region-btn {
+      background: rgba(13,20,32,0.92);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: 4px 9px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.06em;
+      transition: all 0.15s;
+      backdrop-filter: blur(8px);
+    }
+    .region-btn:hover,
+    .region-btn.active {
+      background: rgba(74,158,202,0.15);
+      border-color: #4a9eca;
+      color: #4a9eca;
+    }
+
+    /* Zoom cursor */
+    .map-area.zoomed { cursor: grab; }
+    .map-area.zoomed:active { cursor: grabbing; }
+
+    /* ── MAP ── */
     .map-area {
       position: relative;
       background: linear-gradient(180deg, #080e1a 0%, #060a12 100%);
@@ -575,8 +639,24 @@
   </div>
 
   <!-- ── MAP ── -->
-  <div class="map-area">
+  <div class="map-area" id="map-area">
     <svg id="map"></svg>
+
+    <!-- Region zoom buttons -->
+    <div class="region-controls">
+      <button class="region-btn active" data-region="world">World</button>
+      <button class="region-btn" data-region="asia">East Asia</button>
+      <button class="region-btn" data-region="europe">Europe</button>
+      <button class="region-btn" data-region="americas">Americas</button>
+      <button class="region-btn" data-region="seasia">SE Asia</button>
+    </div>
+
+    <!-- +/- zoom buttons -->
+    <div class="zoom-controls">
+      <button class="zoom-btn" id="zoom-in"  title="Zoom in">+</button>
+      <button class="zoom-btn" id="zoom-out" title="Zoom out">−</button>
+      <button class="zoom-btn" id="zoom-reset" title="Reset view" style="font-size:10px">⌂</button>
+    </div>
   </div>
 
   <!-- ── RIGHT PANEL ── -->
@@ -787,6 +867,7 @@ let currentLayer    = "all";
 // MAP SETUP
 // ============================================================
 const mapEl   = document.getElementById("map");
+const mapArea = document.getElementById("map-area");
 const tooltip = document.getElementById("tooltip");
 
 function getMapDimensions() {
@@ -804,6 +885,62 @@ const projection = d3.geoNaturalEarth1()
   .translate([width / 2, height / 2 + 20]);
 
 const pathGen = d3.geoPath().projection(projection);
+
+// ── ZOOM ────────────────────────────────────────────────────
+let currentTransform = d3.zoomIdentity;
+let mapG; // main group that zoom transforms
+
+const zoomBehavior = d3.zoom()
+  .scaleExtent([0.8, 10])
+  .on("zoom", (event) => {
+    currentTransform = event.transform;
+    if (mapG) mapG.attr("transform", currentTransform);
+    // Scale labels inversely so they stay readable when zoomed
+    d3.selectAll(".node-label")
+      .attr("font-size", Math.max(7, 9.5 / Math.sqrt(currentTransform.k)) + "px");
+    mapArea.classList.toggle("zoomed", currentTransform.k > 1);
+  });
+
+svg.call(zoomBehavior);
+
+// Named region presets — center [lng,lat] and zoom scale
+const REGIONS = {
+  world:    null,
+  asia:     { center: [112, 33], scale: 3.2 },
+  seasia:   { center: [108, 12], scale: 4.8 },
+  europe:   { center: [15, 52],  scale: 4.2 },
+  americas: { center: [-85, 35], scale: 3.0 }
+};
+
+function zoomToRegion(regionKey) {
+  document.querySelectorAll(".region-btn").forEach(b => b.classList.remove("active"));
+  document.querySelector(`[data-region="${regionKey}"]`).classList.add("active");
+  const region = REGIONS[regionKey];
+  if (!region) {
+    svg.transition().duration(650)
+      .call(zoomBehavior.transform, d3.zoomIdentity);
+    return;
+  }
+  const [cx, cy] = projection(region.center);
+  const k = region.scale;
+  svg.transition().duration(650).call(
+    zoomBehavior.transform,
+    d3.zoomIdentity.translate(width/2 - k*cx, height/2 - k*cy).scale(k)
+  );
+}
+
+document.querySelectorAll(".region-btn").forEach(btn =>
+  btn.addEventListener("click", () => zoomToRegion(btn.dataset.region))
+);
+document.getElementById("zoom-in").addEventListener("click", () =>
+  svg.transition().duration(300).call(zoomBehavior.scaleBy, 1.5)
+);
+document.getElementById("zoom-out").addEventListener("click", () =>
+  svg.transition().duration(300).call(zoomBehavior.scaleBy, 0.67)
+);
+document.getElementById("zoom-reset").addEventListener("click", () =>
+  zoomToRegion("world")
+);
 
 // ============================================================
 // HELPERS
@@ -930,40 +1067,67 @@ function updateMetrics(scenario, demandComp) {
 let flowLines, nodeGroups;
 
 function buildMap(world) {
-  // Ocean
-  svg.append("path")
+
+  // ── ARROWHEAD MARKERS ──────────────────────────────────────
+  // One marker per flow color so arrows match line color
+  const defs = svg.append("defs");
+
+  const arrowColors = {
+    standard:   "#4a9eca",
+    conflict:   "#e76f51",
+    contested:  "#f0c040",
+    potential:  "#3aaa8f"
+  };
+
+  Object.entries(arrowColors).forEach(([key, color]) => {
+    defs.append("marker")
+      .attr("id", `arrow-${key}`)
+      .attr("viewBox", "0 0 8 8")
+      .attr("refX", 6)
+      .attr("refY", 4)
+      .attr("markerWidth", 5)
+      .attr("markerHeight", 5)
+      .attr("orient", "auto")
+      .append("path")
+        .attr("d", "M0,1 L8,4 L0,7 Z")
+        .attr("fill", color)
+        .attr("opacity", 0.9);
+  });
+
+  // ── MAIN ZOOMABLE GROUP ────────────────────────────────────
+  mapG = svg.append("g").attr("class", "map-g");
+
+  // Ocean sphere
+  mapG.append("path")
     .datum({ type: "Sphere" })
     .attr("class", "sphere")
     .attr("d", pathGen);
 
   // Graticule
-  svg.append("path")
+  mapG.append("path")
     .datum(d3.geoGraticule()())
     .attr("class", "graticule")
     .attr("d", pathGen);
 
   // Countries
-  svg.append("g")
+  mapG.append("g")
     .selectAll("path")
     .data(topojson.feature(world, world.objects.countries).features)
     .join("path")
     .attr("class", "country")
     .attr("d", pathGen);
 
-  // Flows group (behind nodes)
-  const flowsG = svg.append("g").attr("class", "flows");
+  // ── FLOWS ──────────────────────────────────────────────────
+  const flowsG = mapG.append("g").attr("class", "flows");
 
   flowLines = flowsG.selectAll("path")
     .data(FLOWS)
     .join("path")
-    .attr("class", d => {
-      let cls = "flow-line";
-      if (d.policy === "potential") cls += " potential";
-      return cls;
-    })
+    .attr("class", d => "flow-line" + (d.policy === "potential" ? " potential" : ""))
     .attr("d", d => flowPath(d))
     .attr("stroke", d => flowColor(d.policy))
     .attr("stroke-width", d => flowWidth(d, currentScenario, currentDemand))
+    .attr("marker-end", d => `url(#arrow-${d.policy === "standard" ? "standard" : d.policy})`)
     .attr("opacity", d => d.policy === "potential" ? 0.35 : 0.55)
     .on("mouseover", function(event, d) {
       if (!this.style.display || this.style.display === "none") return;
@@ -984,8 +1148,8 @@ function buildMap(world) {
       hideTooltip();
     });
 
-  // Nodes group
-  const nodesG = svg.append("g").attr("class", "nodes");
+  // ── NODES ──────────────────────────────────────────────────
+  const nodesG = mapG.append("g").attr("class", "nodes");
 
   const nodeData = Object.entries(NODES).map(([name, data]) => ({
     name, ...data,
@@ -999,14 +1163,10 @@ function buildMap(world) {
 
   // Circles
   nodeGroups.append("circle")
-    .attr("class", d => {
-      if (d.status === "planned") return "node-planned";
-      return `node-${d.type}`;
-    })
+    .attr("class", d => d.status === "planned" ? "node-planned" : `node-${d.type}`)
     .attr("r", d => nodeRadius(d))
     .on("mouseover", function(event, d) {
       if (!isNodeVisible(d.name)) return;
-      // Highlight connected flows
       flowLines.classed("faded", f => f.source !== d.name && f.target !== d.name);
       const vol = d.volume_kt || d.capacity_kt || 0;
       const volLabel = d.type === "mining" ? "Production" : d.type === "processing" ? "Capacity" : "Demand";
@@ -1028,7 +1188,7 @@ function buildMap(world) {
       hideTooltip();
     });
 
-  // Labels
+  // Labels — hidden by default at world zoom, appear when zoomed
   nodeGroups.append("text")
     .attr("class", "node-label")
     .attr("dy", d => -(nodeRadius(d) + 5))
@@ -1218,9 +1378,15 @@ d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
 
 // Resize handler
 window.addEventListener("resize", () => {
-  const d = getMapDimensions();
-  svg.attr("viewBox", `0 0 ${d.width} ${d.height}`);
-  projection.scale(d.width * 0.175).translate([d.width/2, d.height/2+20]);
+  const dims = getMapDimensions();
+  width = dims.width; height = dims.height;
+  svg.attr("viewBox", `0 0 ${width} ${height}`);
+  projection.scale(width * 0.175).translate([width/2, height/2+20]);
+  if (mapG) {
+    mapG.selectAll(".sphere").attr("d", pathGen);
+    mapG.selectAll(".graticule").attr("d", pathGen);
+    mapG.selectAll(".country").attr("d", pathGen);
+  }
   if (flowLines) flowLines.attr("d", d => flowPath(d));
   if (nodeGroups) nodeGroups.attr("transform", d => {
     const [px,py] = projection(d.coords);
