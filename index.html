@@ -1258,46 +1258,32 @@ function getArcMidpointAnalytic(flowDatum) {
   const dist = Math.sqrt(dx * dx + dy * dy);
   if (dist < 1) return null;
 
-  const r = dist * 0.65; // must match flowPath / flowPathFull curvature
-
-  // Midpoint of chord
+  // The arc curves upward (sweep=1). Approximate it with a quadratic Bezier
+  // whose control point sits perpendicular to the chord midpoint, offset
+  // by the same bulge the SVG arc produces (approx r * 0.65 * 0.3 works well).
   const mx = (x1 + x2) / 2;
   const my = (y1 + y2) / 2;
 
-  // Half-chord length
-  const halfChord = dist / 2;
+  // Perpendicular to chord, pointing "upward" in the arc's sweep direction.
+  // SVG sweep-flag=1 curves to the right of the direction of travel.
+  // Perpendicular rightward of (dx,dy) is (dy, -dx) normalised.
+  const bulge = dist * 0.18; // controls how far off-chord the control point sits
+  const cpx = mx + (dy / dist) * bulge;
+  const cpy = my + (-dx / dist) * bulge;
 
-  // Distance from chord midpoint to arc center
-  // For sweep-flag=1 (right-hand arc), center is to the right of direction of travel
-  const h = Math.sqrt(Math.max(0, r * r - halfChord * halfChord));
+  // Quadratic Bezier midpoint at t=0.5:
+  // B(0.5) = 0.25*P0 + 0.5*CP + 0.25*P1
+  const midX = 0.25 * x1 + 0.5 * cpx + 0.25 * x2;
+  const midY = 0.25 * y1 + 0.5 * cpy + 0.25 * y2;
 
-  // Unit perpendicular to chord (rotated 90° clockwise for sweep=1)
-  const px = dy / dist;
-  const py = -dx / dist;
+  // Tangent at t=0.5 of quadratic Bezier:
+  // B'(0.5) = (CP - P0)*0.5*2 + (P1 - CP)*0.5*2  simplified: (P1 - P0) * ... 
+  // = 2*(1-t)*(CP-P0) + 2*t*(P1-CP) at t=0.5
+  // = (CP - P0) + (P1 - CP) = P1 - P0
+  // Tangent direction at midpoint is simply P1 - P0 for quadratic Bezier at t=0.5
+  const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
 
-  // Arc center
-  const cx = mx + h * px;
-  const cy = my + h * py;
-
-  // Angles from center to start and end points
-  const a1 = Math.atan2(y1 - cy, x1 - cx);
-  const a2 = Math.atan2(y2 - cy, x2 - cx);
-
-  // For sweep-flag=1, angle increases (clockwise in SVG y-down coords)
-  let sweep = a2 - a1;
-  if (sweep < 0) sweep += 2 * Math.PI;
-
-  // Mid-angle
-  const am = a1 + sweep / 2;
-
-  // Point on arc at mid-angle
-  const midX = cx + r * Math.cos(am);
-  const midY = cy + r * Math.sin(am);
-
-  // Tangent at mid-angle: perpendicular to radius, in direction of sweep
-  const tangentAngleDeg = (am + Math.PI / 2) * 180 / Math.PI;
-
-  return { x: midX, y: midY, angle: tangentAngleDeg };
+  return { x: midX, y: midY, angle };
 }
 
 function flowPath(d) {
