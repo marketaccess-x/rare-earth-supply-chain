@@ -431,7 +431,6 @@
       line-height: 1.6;
       padding: 14px 16px;
       border-bottom: 1px solid var(--border);
-      min-height: 90px;
     }
     .scenario-desc .scenario-name {
       font-weight: 600;
@@ -648,7 +647,7 @@
       <button class="region-btn" data-region="asia">East Asia</button>
       <button class="region-btn" data-region="europe">Europe</button>
       <button class="region-btn" data-region="americas">Americas</button>
-      <button class="region-btn" data-region="seasia">SE Asia</button>
+      <button class="region-btn" data-region="seasia">Asia</button>
     </div>
 
     <!-- +/- zoom buttons -->
@@ -906,8 +905,8 @@ svg.call(zoomBehavior);
 // Named region presets — center [lng,lat] and zoom scale
 const REGIONS = {
   world:    null,
-  asia:     { center: [112, 33], scale: 3.2 },
-  seasia:   { center: [108, 12], scale: 4.8 },
+  asia:     { center: [112, 28], scale: 3.0 },
+  seasia:   { center: [108, 18], scale: 4.5 },
   europe:   { center: [15, 52],  scale: 4.2 },
   americas: { center: [-85, 35], scale: 3.0 }
 };
@@ -1082,16 +1081,15 @@ function buildMap(world) {
   Object.entries(arrowColors).forEach(([key, color]) => {
     defs.append("marker")
       .attr("id", `arrow-${key}`)
-      .attr("viewBox", "0 0 8 8")
-      .attr("refX", 6)
-      .attr("refY", 4)
-      .attr("markerWidth", 5)
-      .attr("markerHeight", 5)
-      .attr("orient", "auto")
+      .attr("viewBox", "0 0 10 10")
+      .attr("refX", 9)
+      .attr("refY", 5)
+      .attr("markerWidth", 7)
+      .attr("markerHeight", 7)
+      .attr("orient", "auto-start-reverse")
       .append("path")
-        .attr("d", "M0,1 L8,4 L0,7 Z")
-        .attr("fill", color)
-        .attr("opacity", 0.9);
+        .attr("d", "M0,1.5 L9,5 L0,8.5 Z")
+        .attr("fill", color);
   });
 
   // ── MAIN ZOOMABLE GROUP ────────────────────────────────────
@@ -1198,11 +1196,6 @@ function buildMap(world) {
   updateScenario(currentScenario);
 }
 
-function nodeRadius(d) {
-  const v = d.volume_kt || d.capacity_kt || 2;
-  if (d.status === "planned") return 7;
-  return Math.max(6, Math.min(22, Math.sqrt(v) * 2.2));
-}
 
 function shortName(name) {
   const map = {
@@ -1235,11 +1228,29 @@ function flowPath(d) {
   const src = NODES[d.source];
   const tgt = NODES[d.target];
   if (!src || !tgt) return "";
-  const [x1,y1] = projection(src.coords);
-  const [x2,y2] = projection(tgt.coords);
-  const dx = x2-x1, dy = y2-y1;
-  const dr = Math.sqrt(dx*dx+dy*dy) * 0.65;
-  return `M${x1},${y1}A${dr},${dr} 0 0,1 ${x2},${y2}`;
+  const [x1, y1] = projection(src.coords);
+  const [x2, y2] = projection(tgt.coords);
+  const dx = x2 - x1, dy = y2 - y1;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist === 0) return "";
+
+  // Shorten endpoint by target node radius + arrow clearance
+  // so the arrowhead sits outside the circle, not hidden under it
+  const tgtRadius = nodeRadius(tgt) + 4;
+  const ratio = (dist - tgtRadius) / dist;
+  const ex = x1 + dx * ratio;
+  const ey = y1 + dy * ratio;
+
+  const dr = dist * 0.65;
+  return `M${x1},${y1}A${dr},${dr} 0 0,1 ${ex},${ey}`;
+}
+
+// nodeRadius helper that accepts a node data object directly (for flowPath use)
+function nodeRadius(d) {
+  if (!d) return 8;
+  const v = d.volume_kt || d.capacity_kt || 2;
+  if (d.status === "planned") return 7;
+  return Math.max(6, Math.min(22, Math.sqrt(v) * 2.2));
 }
 
 function flowWidth(flow, scenario, demandComp) {
