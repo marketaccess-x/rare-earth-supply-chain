@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rare Earth Supply Chain | Market Access X</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <style>
+    :root {
+      --bg:         #080c14;
+      --bg2:        #0d1420;
+      --bg3:        #111827;
+      --border:     rgba(255,255,255,0.07);
+      --border2:    rgba(255,255,255,0.12);
+      --text:       #c9d1e0;
+      --text-dim:   #5a6478;
+      --text-bright:#f0f4ff;
+      --mono:       'IBM Plex Mono', monospace;
+      --sans:       'IBM Plex Sans', sans-serif;
+
+      /* Scenario colors */
+      --c-baseline:    #78909c;
+      --c-partial:     #f4a261;
+      --c-full:        #e76f51;
+      --c-western:     #457b9d;
+      --c-integration: #9b5de5;
+
+      /* Node colors */
+      --c-mining:     #b06dcc;
+      --c-processing: #4a9eca;
+      --c-demand:     #3aaa8f;
+      --c-planned:    #2a3f52;
+
+      /* Flow colors */
+      --c-standard:   #4a9eca;
+      --c-contested:  #f0c040;
+      --c-potential:  #3aaa8f;
+      --c-conflict:   #e76f51;
+      --c-integration-flow: #9b5de5;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+    }
+    .header-left h1 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-bright);
+      letter-spacing: 0.02em;
+    }
+    .header-left h1 span { color: #4a9eca; }
+    .header-left p {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      margin-top: 2px;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-tag {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      border: 1px solid var(--border2);
+      padding: 4px 10px;
+      border-radius: 3px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* ── LAYOUT ── */
+    .app {
+      display: grid;
+      grid-template-columns: 240px 1fr 280px;
+      grid-template-rows: 1fr;
+      height: calc(100vh - 57px);
+    }
+
+    /* ── LEFT PANEL ── */
+    .panel-left {
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .panel-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-label {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    /* Scenario buttons */
+    .scenario-btn {
+      display: block;
+      width: 100%;
+      padding: 9px 12px;
+      margin-bottom: 5px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 0.78rem;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s;
+      position: relative;
+      padding-left: 20px;
+    }
+    .scenario-btn::before {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--c-dim);
+    }
+    .scenario-btn:hover {
+      background: rgba(255,255,255,0.04);
+      border-color: var(--border2);
+    }
+    .scenario-btn.active {
+      background: rgba(255,255,255,0.05);
+      border-color: var(--scenario-color, #78909c);
+      color: var(--text-bright);
+    }
+    .scenario-btn.active::before {
+      background: var(--scenario-color, #78909c);
+      box-shadow: 0 0 6px var(--scenario-color, #78909c);
+    }
+
+    /* Demand toggle */
+    .demand-toggle {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .demand-btn {
+      flex: 1;
+      padding: 7px 6px;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+      line-height: 1.3;
+    }
+    .demand-btn:first-child { border-right: 1px solid var(--border); }
+    .demand-btn.active {
+      background: rgba(74,158,202,0.15);
+      color: #4a9eca;
+    }
+
+    /* Layer filters */
+    .layer-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      margin: 3px 3px 3px 0;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .layer-btn .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+    }
+    .layer-btn.active {
+      border-color: var(--border2);
+      color: var(--text);
+      background: rgba(255,255,255,0.04);
+    }
+
+    /* Legend */
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+    .legend-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.3);
+      flex-shrink: 0;
+    }
+    .legend-line {
+      width: 20px; height: 2px;
+      border-radius: 1px;
+      flex-shrink: 0;
+    }
+    .legend-dash {
+      width: 20px; height: 2px;
+      background: repeating-linear-gradient(90deg, #3aaa8f 0px, #3aaa8f 4px, transparent 4px, transparent 7px);
+      flex-shrink: 0;
+    }
+
+    /* ── MAP CENTER ── */
+    .map-area {
+      position: relative;
+      background: linear-gradient(180deg, #080e1a 0%, #060a12 100%);
+      overflow: hidden;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+    .country {
+      fill: #101828;
+      stroke: #1c2d44;
+      stroke-width: 0.4px;
+      transition: fill 0.2s;
+    }
+    .country:hover { fill: #172236; }
+    .graticule {
+      fill: none;
+      stroke: #0d1829;
+      stroke-width: 0.4px;
+    }
+    .sphere { fill: #070d18; }
+
+    /* Nodes */
+    .node-mining    { fill: var(--c-mining);     stroke: rgba(255,255,255,0.6); stroke-width: 1.2px; cursor: pointer; transition: all 0.2s; }
+    .node-processing{ fill: var(--c-processing);  stroke: rgba(255,255,255,0.6); stroke-width: 1.2px; cursor: pointer; transition: all 0.2s; }
+    .node-demand    { fill: var(--c-demand);      stroke: rgba(255,255,255,0.6); stroke-width: 1.2px; cursor: pointer; transition: all 0.2s; }
+    .node-planned   { fill: var(--c-planned);     stroke: #4a9eca; stroke-width: 1.2px; stroke-dasharray: 3,2; cursor: pointer; transition: all 0.2s; opacity: 0.7; }
+
+    .node-mining:hover,
+    .node-processing:hover,
+    .node-demand:hover    { stroke-width: 2.5px; stroke: #fff; filter: brightness(1.2); }
+    .node-planned:hover   { opacity: 1; stroke-width: 2px; }
+
+    .node-label {
+      font-family: var(--mono);
+      font-size: 9.5px;
+      fill: rgba(255,255,255,0.75);
+      text-anchor: middle;
+      pointer-events: none;
+    }
+
+    /* Flows */
+    .flow-line {
+      fill: none;
+      stroke-linecap: round;
+      opacity: 0.55;
+      transition: opacity 0.25s, stroke-width 0.25s;
+    }
+    .flow-line.faded   { opacity: 0.05; }
+    .flow-line.active  { opacity: 0.95; }
+    .flow-line.potential {
+      stroke-dasharray: 5,4;
+      opacity: 0.35;
+    }
+    .flow-line.potential.faded { opacity: 0.03; }
+
+    /* ── TOOLTIP ── */
+    .tooltip {
+      position: fixed;
+      background: rgba(8,12,20,0.97);
+      border: 1px solid rgba(74,158,202,0.25);
+      border-radius: 6px;
+      padding: 13px 16px;
+      font-size: 12px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      max-width: 300px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+      z-index: 9999;
+    }
+    .tooltip.visible { opacity: 1; }
+    .tt-title {
+      font-weight: 600;
+      color: #4a9eca;
+      font-size: 13px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tt-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 4px 0;
+      gap: 12px;
+    }
+    .tt-row .lbl { color: var(--text-dim); font-size: 11px; }
+    .tt-row .val { color: var(--text-bright); font-size: 11px; font-family: var(--mono); }
+    .tt-note {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      color: #5a7090;
+      font-size: 10.5px;
+      line-height: 1.5;
+    }
+    .tt-tag {
+      display: inline-block;
+      margin-top: 7px;
+      padding: 2px 7px;
+      border-radius: 2px;
+      font-family: var(--mono);
+      font-size: 9.5px;
+    }
+    .tt-tag.conflict { background: rgba(231,111,81,0.15); color: #e76f51; border: 1px solid rgba(231,111,81,0.3); }
+    .tt-tag.contested { background: rgba(240,192,64,0.12); color: #f0c040; border: 1px solid rgba(240,192,64,0.25); }
+    .tt-tag.potential { background: rgba(58,170,143,0.12); color: #3aaa8f; border: 1px solid rgba(58,170,143,0.25); }
+
+    /* ── RIGHT PANEL ── */
+    .panel-right {
+      background: var(--bg2);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    /* Scenario description */
+    .scenario-desc {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      line-height: 1.6;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      min-height: 90px;
+    }
+    .scenario-desc .scenario-name {
+      font-weight: 600;
+      font-size: 0.78rem;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .scenario-name .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+    }
+
+    /* Concentration metrics */
+    .metric-block {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .metric-label {
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+      line-height: 1.4;
+    }
+    .metric-value {
+      font-family: var(--mono);
+      font-size: 1.15rem;
+      font-weight: 500;
+      color: var(--text-bright);
+      margin-bottom: 6px;
+    }
+    .metric-bar-wrap {
+      height: 6px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+    .metric-bar {
+      height: 100%;
+      background: #457b9d;
+      border-radius: 3px;
+      transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+    }
+    .metric-annotation {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      color: var(--text-dim);
+    }
+    .metric-annotation.high   { color: #e76f51; }
+    .metric-annotation.mod    { color: #f4a261; }
+
+    /* Stats panel */
+    .stats-grid {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+      gap: 8px;
+    }
+    .stat-label {
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      line-height: 1.3;
+    }
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text-bright);
+      white-space: nowrap;
+    }
+
+    /* Methodology */
+    .methodology {
+      padding: 12px 16px;
+      font-size: 0.65rem;
+      color: #3d4f62;
+      line-height: 1.6;
+    }
+    .methodology a {
+      color: #4a9eca;
+      text-decoration: none;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #1e2d3d; border-radius: 2px; }
+
+    /* Scenario change animation */
+    @keyframes flash {
+      0%   { opacity: 0.3; }
+      100% { opacity: 1; }
+    }
+    .scenario-change { animation: flash 0.3s ease-out; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Global <span>Rare Earth</span> Supply Chain</h1>
+    <p>Policy scenario modeler · Mining → Processing → End-use · Market Access X</p>
+  </div>
+  <div class="header-right">
+    <span class="brand-tag">marketaccess-x.com</span>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ── LEFT PANEL ── -->
+  <div class="panel-left">
+
+    <div class="panel-section">
+      <div class="panel-label">Policy Scenario</div>
+      <button class="scenario-btn active" data-scenario="baseline"
+        style="--scenario-color:#78909c">Baseline 2025</button>
+      <button class="scenario-btn" data-scenario="china_escalates_partial"
+        style="--scenario-color:#f4a261">Export Controls — Partial</button>
+      <button class="scenario-btn" data-scenario="china_escalates_full"
+        style="--scenario-color:#e76f51">Export Controls — Full</button>
+      <button class="scenario-btn" data-scenario="western_buildout"
+        style="--scenario-color:#457b9d">Western Capacity Expansion</button>
+      <button class="scenario-btn" data-scenario="processing_integration"
+        style="--scenario-color:#9b5de5">Chinese Processing Integration</button>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-label">Demand Structure</div>
+      <div class="demand-toggle">
+        <button class="demand-btn active" data-demand="green_tech">2023<br>Baseline</button>
+        <button class="demand-btn" data-demand="defense_weighted">2026+<br>Trajectory</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-label">View Filter</div>
+      <button class="layer-btn active" data-layer="all">
+        <span class="dot" style="background:#aaa"></span>All flows
+      </button>
+      <button class="layer-btn" data-layer="mining">
+        <span class="dot" style="background:var(--c-mining)"></span>Mining
+      </button>
+      <button class="layer-btn" data-layer="processing">
+        <span class="dot" style="background:var(--c-processing)"></span>Processing
+      </button>
+      <button class="layer-btn" data-layer="demand">
+        <span class="dot" style="background:var(--c-demand)"></span>End-use
+      </button>
+      <button class="layer-btn" data-layer="china">
+        <span class="dot" style="background:#e76f51"></span>China flows
+      </button>
+      <button class="layer-btn" data-layer="potential">
+        <span class="dot" style="background:#3aaa8f"></span>Contested routes
+      </button>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-label">Legend — Nodes</div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--c-mining)"></div>
+        <span>Mining / Extraction</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--c-processing)"></div>
+        <span>Processing / Separation</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--c-demand)"></div>
+        <span>End-use Demand</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--c-planned); border-color:#4a9eca;"></div>
+        <span>Planned (scenario-dependent)</span>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-label">Legend — Flows</div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#4a9eca"></div>
+        <span>Established flow</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dash"></div>
+        <span>Contested / potential route</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#e76f51"></div>
+        <span>Conflict-affected origin</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#f0c040"></div>
+        <span>Geopolitically contested</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── MAP ── -->
+  <div class="map-area">
+    <svg id="map"></svg>
+  </div>
+
+  <!-- ── RIGHT PANEL ── -->
+  <div class="panel-right">
+
+    <div class="scenario-desc" id="scenario-desc">
+      <div class="scenario-name">
+        <span class="dot" id="scenario-dot" style="background:#78909c"></span>
+        <span id="scenario-name-text">Baseline 2025</span>
+      </div>
+      <div id="scenario-desc-text">Current policy environment. Chinese export controls on processing chemicals in effect but not escalated. Lynas Malaysia operational including first commercial HREE separation outside China (May 2025).</div>
+    </div>
+
+    <div class="panel-section" style="padding:12px 16px 4px">
+      <div class="panel-label">Concentration Metrics</div>
+    </div>
+
+    <div class="metric-block" id="metric-us-defense">
+      <div class="metric-label">Chinese Supply Dependency<br>US Defense</div>
+      <div class="metric-value" id="val-us-defense">—</div>
+      <div class="metric-bar-wrap"><div class="metric-bar" id="bar-us-defense" style="width:0%"></div></div>
+      <div class="metric-annotation" id="ann-us-defense"></div>
+    </div>
+
+    <div class="metric-block" id="metric-eu-defense">
+      <div class="metric-label">Chinese Supply Dependency<br>EU Defense</div>
+      <div class="metric-value" id="val-eu-defense">—</div>
+      <div class="metric-bar-wrap"><div class="metric-bar" id="bar-eu-defense" style="width:0%"></div></div>
+      <div class="metric-annotation" id="ann-eu-defense"></div>
+    </div>
+
+    <div class="metric-block" id="metric-feoc">
+      <div class="metric-label">FEOC Regulatory Exposure<br>Western OEMs (EV/Wind)</div>
+      <div class="metric-value" id="val-feoc">—</div>
+      <div class="metric-bar-wrap"><div class="metric-bar" id="bar-feoc" style="width:0%"></div></div>
+      <div class="metric-annotation" id="ann-feoc"></div>
+    </div>
+
+    <div class="metric-block" id="metric-routing">
+      <div class="metric-label">New Producer Routing<br>Chinese Processing Share</div>
+      <div class="metric-value" id="val-routing">—</div>
+      <div class="metric-bar-wrap"><div class="metric-bar" id="bar-routing" style="width:0%"></div></div>
+      <div class="metric-annotation" id="ann-routing"></div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="panel-label" style="margin-bottom:10px">Structural Facts (Baseline)</div>
+      <div class="stat-row">
+        <span class="stat-label">China mining share</span>
+        <span class="stat-value">69%</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">China processing share</span>
+        <span class="stat-value">~90%</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Non-China HREE separation</span>
+        <span class="stat-value">~1,500 t/y</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">New producer China routing</span>
+        <span class="stat-value">>95%</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">2030 non-China capacity (BNEF)</span>
+        <span class="stat-value">~50% of CN</span>
+      </div>
+    </div>
+
+    <div class="methodology">
+      This tool describes supply chain concentration and flow patterns under different policy scenarios.
+      Color and metric values indicate magnitude of change from baseline — not a judgment about preferred
+      outcomes. The same data point represents supply exposure for one actor and market position for another.
+      Sources: USGS MCS 2025, CSIS, IEA, Lynas/MP Materials filings, Payne Institute 2025.
+      <br><br>
+      <a href="https://marketaccess-x.com" target="_blank">marketaccess-x.com</a>
+    </div>
+
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+
+const SCENARIOS = {
+  baseline: {
+    label: "Baseline 2025",
+    description: "Current policy environment. Chinese export controls on processing chemicals in effect but not escalated. Lynas Malaysia operational including first commercial HREE separation outside China (May 2025). MP Materials separating LREEs at Mountain Pass. Pentagon contracts active but small scale.",
+    color: "#78909c"
+  },
+  china_escalates_partial: {
+    label: "Export Controls — Partial",
+    description: "Beijing extends export controls from processing chemicals to separated oxides and alloys. Chinese processors continue serving domestic industry at full capacity. Flow disruption concentrated in oxide and alloy trade. Extends controls already enacted in 2023-2024.",
+    color: "#f4a261"
+  },
+  china_escalates_full: {
+    label: "Export Controls — Full",
+    description: "Export controls extended to raw ore, oxides, alloys, and finished magnets. Near-complete restriction of Chinese rare earth exports to non-domestic markets. Historical precedent: 2010 China-Japan restriction — but structural rather than temporary.",
+    color: "#e76f51"
+  },
+  western_buildout: {
+    label: "Western Capacity Expansion",
+    description: "IRA FEOC exclusions enforce on schedule. DPA funding translates into operational separation capacity. Lynas Texas resolves permit delays and commissions 2027. Iluka Eneabba commissions 2026. MSP technical assistance creates nascent non-Chinese pathways in Vietnam. Planned nodes become operational. This is the policy-intent scenario — the gap between this and baseline is where execution risk lives.",
+    color: "#457b9d"
+  },
+  processing_integration: {
+    label: "Chinese Processing Integration",
+    description: "Chinese capital and processing know-how consolidates relationships with new producer countries. Nigeria, Thailand, Vietnam feedstocks increasingly routed through Chinese processing as investment relationships mature. Dec 2023 technology export ban structurally advantages incumbents. Potential non-Chinese pathways for new producers do not materialize.",
+    color: "#9b5de5"
+  }
+};
+
+const DEMAND_COMPOSITIONS = {
+  green_tech: {
+    label: "Demand Structure: 2023 Baseline",
+    multipliers: { "Defense USA":1.0,"Defense EU":1.0,"EV Wind Asia OEMs":1.0,"EV Wind US OEMs":1.0,"EV Wind EU OEMs":1.0,"Consumer Electronics":1.0 }
+  },
+  defense_weighted: {
+    label: "Demand Structure: 2026+ Trajectory",
+    multipliers: { "Defense USA":2.2,"Defense EU":3.5,"EV Wind Asia OEMs":1.1,"EV Wind US OEMs":0.7,"EV Wind EU OEMs":1.3,"Consumer Electronics":1.1 }
+  }
+};
+
+const NODES = {
+  // MINING
+  "China Mining":        { coords:[108,40],  type:"mining",     status:"operational", volume_kt:270, pct:"69%",    flag:"🇨🇳", policy:"none",     note:"Bayan Obo (Inner Mongolia) + Sichuan. World's largest REE producer. Quota-controlled by state-owned enterprises. LREE dominant. Vertically integrated with processing.", source:"USGS MCS 2025" },
+  "USA Mountain Pass":   { coords:[-115,35], type:"mining",     status:"operational", volume_kt:45,  pct:"11.5%",  flag:"🇺🇸", policy:"none",     note:"Mountain Pass, CA. MP Materials. LREE only — no significant HREE in bastnäsite ore. Until 2022, 95%+ of concentrate sold to Chinese processor Shenghe Resources. $400M Pentagon equity investment July 2025.", source:"USGS MCS 2025; Payne Institute 2025" },
+  "Australia Mt Weld":   { coords:[122,-29], type:"mining",     status:"operational", volume_kt:13,  pct:"3.3%",   flag:"🇦🇺", policy:"none",     note:"Mt Weld, Western Australia. Operated by Lynas. High-grade deposit but low HREE content — limits heavy rare earth separation volumes regardless of processing investment.", source:"USGS MCS 2025" },
+  "Myanmar Kachin":      { coords:[97,25],   type:"mining",     status:"operational", volume_kt:27,  pct:"~7%*",   flag:"🇲🇲", policy:"conflict", note:"⚠ ESTIMATED DATA — unverified. Kachin State ion-adsorption clay deposits. HREE-rich — critical global source of dysprosium and terbium. Conflict-affected. Near-100% flows to Chinese processors. Western buyers face legal/reputational exposure under conflict minerals frameworks.", source:"USGS MCS 2025 (est.)" },
+  "Nigeria":             { coords:[9,10],    type:"mining",     status:"operational", volume_kt:13,  pct:"3.3%",   flag:"🇳🇬", policy:"contested",note:"Plateau State. 80% YoY growth in 2024. No established non-Chinese processing relationships. Chinese capital present. France-Nigeria critical minerals agreement late 2024 — potential for future diversion.", source:"USGS MCS 2025" },
+  "Thailand":            { coords:[101,15],  type:"mining",     status:"operational", volume_kt:13,  pct:"3.3%",   flag:"🇹🇭", policy:"contested",note:"261% YoY growth in 2024. BYD $486M EV factory investment embedding Thai production into Chinese industrial ecosystems. Chinese processing relationships consolidating.", source:"USGS MCS 2025; NAI500 2025" },
+  "Vietnam":             { coords:[105,21],  type:"mining",     status:"operational", volume_kt:1,   pct:"<1%",    flag:"🇻🇳", policy:"contested",note:"World's 2nd-largest reserves but near-zero current output. Production fell 75% YoY in 2024 due to corruption scandals delaying mining auctions. Most geopolitically contestable node — genuine Vietnamese strategic anxiety about Chinese dependence, active US MSP engagement.", source:"USGS MCS 2025" },
+  "Russia":              { coords:[33,69],   type:"mining",     status:"operational", volume_kt:2.5, pct:"0.6%",   flag:"🇷🇺", policy:"none",     note:"Murmansk region. Stable output, primarily domestically consumed. Sanctions limit Western engagement. Strategically peripheral to Western supply chain diversification.", source:"USGS MCS 2025" },
+
+  // PROCESSING
+  "China Processing":       { coords:[116,34],  type:"processing", status:"operational", volume_kt:300, pct:"~90%",   flag:"🇨🇳", policy:"none",    note:"Near-monopoly on global REE refining and separation. China Rare Earth Group + China Northern Rare Earth. Absolute advantage in solvent extraction — decades of learning-by-doing. Dec 2023 ban on technology export formalizes this as structural barrier. Produces 300,000t NdFeB magnets vs. US 1,000t target.", source:"CSIS 2025; ING Think 2025" },
+  "Lynas Malaysia":         { coords:[103,4],   type:"processing", status:"operational", volume_kt:17,  pct:"~5%",    flag:"🇲🇾", policy:"none",    note:"Gebeng, Kuantan. World's largest REE processor outside China. Achieved first commercial dysprosium oxide separation outside China May 2025. New HREE circuit: 1,500t/y. Constraint: Mt Weld ore has low HREE content. Malaysian operating license subject to periodic renewal.", source:"Lynas ASX May 2025" },
+  "MP Materials California":{ coords:[-118,36], type:"processing", status:"operational", volume_kt:1.3, pct:"<1%",    flag:"🇺🇸", policy:"none",    note:"Mountain Pass. Record 1,300t NdPr oxide in 2024. LREE separation operational; HREE separation mid-2026. Fort Worth magnet plant: 1,000t NdFeB target by end 2025 — less than 1% of Chinese output. Total TREO capacity 40,000t (~11.5% global).", source:"Payne Institute 2025; CSIS 2025" },
+  "Neo Performance Estonia":{ coords:[25,59],   type:"processing", status:"operational", volume_kt:2,   pct:"<1%",    flag:"🇪🇪", policy:"none",    note:"Silmet plant, Sillamäe. EU's only commercial REE separator. New magnet plant Narva (2,000t/y). Sole non-Chinese separation capacity on the European continent — severely under-scaled relative to ReArm Europe demand trajectory.", source:"Rare Earth Exchanges 2025" },
+  "Energy Fuels Utah":      { coords:[-110,38], type:"processing", status:"operational", volume_kt:0.2, pct:"<0.1%",  flag:"🇺🇸", policy:"none",    note:"White Mesa Mill, Utah. Pilot-scale HREE separation. Commercial dysprosium separation targeted late 2026. Toll processing model — no own mine. POSCO International partnership. Higher-risk, earlier-stage than MP Materials or Lynas.", source:"Rare Earth Exchanges 2025" },
+
+  // PLANNED — only shown in western_buildout scenario
+  "Lynas Texas":   { coords:[-99,29],  type:"processing", status:"planned", volume_kt:0,  pct:"planned", flag:"🇺🇸", policy:"none", note:"⚠ HALTED: Hondo (LREE) + Seadrift (HREE), Texas. Construction halted — wastewater disposal permit delays threatening 2026 target. Pentagon-funded ($258M HREE + $30M LREE). Gap between legislative intent and operational execution. Only visible under Western Capacity Expansion scenario.", source:"CSIS 2025; Lynas ASX filings" },
+  "Iluka Eneabba": { coords:[115,-29], type:"processing", status:"planned", volume_kt:17.5,pct:"planned",flag:"🇦🇺", policy:"none", note:"Eneabba, Western Australia. Australia's first integrated REE refinery. 17,500t/y capacity — largest planned non-Chinese facility globally. A$1.65B government loan. Will produce Nd, Pr, Dy, Tb oxides. Commission targeted 2026, contingent on offtake agreements. Only visible under Western Capacity Expansion scenario.", source:"CSIS 2025; NAI500 2025" },
+
+  // DEMAND
+  "Defense USA":        { coords:[-77,39],  type:"demand", status:"operational", volume_kt:3,   pct:"defense", flag:"🇺🇸", policy:"none", note:"Pentagon procurement. F-35 (each requires ~920 lbs REE), submarines, missile guidance. HREE-intensive. DoD goal: complete mine-to-magnet supply chain by 2027 — but even achieving this covers <0.1% of global REE usage.", source:"CSIS 2025; DoD NDIS 2024" },
+  "Defense EU":         { coords:[10,52],   type:"demand", status:"operational", volume_kt:2,   pct:"defense", flag:"🇪🇺", policy:"none", note:"NATO/EU defense procurement. Eurofighter, naval, missiles. ReArm Europe (March 2025): €800B commitment implies 3-5x defense magnet demand growth by 2030. EU defense and EU green tech OEMs now compete for the same scarce Neo Performance Estonia output.", source:"ReArm Europe 2025; CSIS 2025" },
+  "EV Wind Asia OEMs":  { coords:[127,37],  type:"demand", status:"operational", volume_kt:45,  pct:"ev_wind", flag:"🌏", policy:"none", note:"Korea + Japan OEMs — Hyundai, Toyota, Panasonic, Samsung SDI. Largest single REE demand segment globally. LREE dominant (NdPr for EV motors, wind generators). Japan reduced Chinese dependence from ~90% to ~60% since 2010.", source:"ING Think 2025; IEA 2024" },
+  "EV Wind US OEMs":    { coords:[-83,42],  type:"demand", status:"operational", volume_kt:15,  pct:"ev_wind", flag:"🇺🇸", policy:"none", note:"GM, Ford, Tesla. IRA FEOC compliance pressure driving restructuring. Under 2026+ demand structure, US EV mandate softening flattens this node's growth while defense demand grows.", source:"ING Think 2025" },
+  "EV Wind EU OEMs":    { coords:[8,48],    type:"demand", status:"operational", volume_kt:12,  pct:"ev_wind", flag:"🇪🇺", policy:"none", note:"VW, BMW, Stellantis. CRMA compliance pressure. Under 2026+ demand structure, EU OEM green tech procurement competes directly with EU Defense for scarce Neo Performance Estonia output — the central unresolved tension of European industrial policy.", source:"ING Think 2025" },
+  "Consumer Electronics":{ coords:[121,31], type:"demand", status:"operational", volume_kt:25,  pct:"electronics",flag:"🌏",policy:"none",note:"Smartphones, speakers, sensors — Shanghai/Shenzhen assembly hub. Least strategically sensitive segment. MP Materials $500M Apple contract (2025) represents early attempt at non-Chinese electronics REE supply chain.", source:"Payne Institute 2025" }
+};
+
+const FLOWS = [
+  // Mining → China Processing
+  { id:"china_mine_china_proc",   source:"China Mining",        target:"China Processing",        baseline_kt:270, policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:1.0, china_escalates_full:1.0, western_buildout:0.9, processing_integration:1.0 }, note:"Domestic vertically integrated flow." },
+  { id:"myanmar_china",           source:"Myanmar Kachin",       target:"China Processing",        baseline_kt:27,  policy:"conflict",   multipliers:{ baseline:1.0, china_escalates_partial:1.1, china_escalates_full:1.2, western_buildout:0.7, processing_integration:1.1 }, note:"HREE-critical. Near-100% China-bound. Escalation scenarios increase flow as China secures HREE feedstock." },
+  { id:"thailand_china",          source:"Thailand",             target:"China Processing",        baseline_kt:13,  policy:"contested",  multipliers:{ baseline:1.0, china_escalates_partial:1.0, china_escalates_full:1.0, western_buildout:0.7, processing_integration:1.2 }, note:"BYD investment embedding Thai production in Chinese supply chains." },
+  { id:"nigeria_china",           source:"Nigeria",              target:"China Processing",        baseline_kt:11,  policy:"contested",  multipliers:{ baseline:1.0, china_escalates_partial:1.0, china_escalates_full:1.0, western_buildout:0.6, processing_integration:1.2 }, note:"No non-Chinese processing relationships established." },
+  { id:"vietnam_china",           source:"Vietnam",              target:"China Processing",        baseline_kt:1,   policy:"contested",  multipliers:{ baseline:1.0, china_escalates_partial:1.0, china_escalates_full:0.8, western_buildout:0.3, processing_integration:1.0 }, note:"Most geopolitically contestable node." },
+  { id:"russia_china",            source:"Russia",               target:"China Processing",        baseline_kt:2,   policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:0.8, china_escalates_full:0.5, western_buildout:0.5, processing_integration:0.8 }, note:"Primarily domestic. Sanctions limit Western engagement." },
+
+  // Mining → Non-China Processing
+  { id:"australia_lynas",         source:"Australia Mt Weld",    target:"Lynas Malaysia",          baseline_kt:13,  policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:1.2, china_escalates_full:1.4, western_buildout:1.5, processing_integration:1.1 }, note:"Core Lynas supply chain. Escalation drives surge contracts." },
+  { id:"usa_mp",                  source:"USA Mountain Pass",    target:"MP Materials California", baseline_kt:40,  policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:1.2, china_escalates_full:1.4, western_buildout:1.8, processing_integration:1.1 }, note:"Previously 95%+ went to Chinese processor Shenghe. Now shifting to domestic separation." },
+
+  // Potential flows — dashed
+  { id:"nigeria_neo_potential",   source:"Nigeria",              target:"Neo Performance Estonia", baseline_kt:0,   policy:"potential",  multipliers:{ baseline:0.0, china_escalates_partial:0.0, china_escalates_full:0.1, western_buildout:0.5, processing_integration:0.0 }, note:"Contested pathway. Requires MSP technical assistance and technology transfer." },
+  { id:"vietnam_lynas_potential", source:"Vietnam",              target:"Lynas Malaysia",          baseline_kt:0,   policy:"potential",  multipliers:{ baseline:0.0, china_escalates_partial:0.1, china_escalates_full:0.3, western_buildout:0.8, processing_integration:0.0 }, note:"Most promising potential route. Vietnamese reserves are HREE-bearing. Key barrier: processing know-how gap." },
+  { id:"australia_iluka_planned", source:"Australia Mt Weld",    target:"Iluka Eneabba",           baseline_kt:0,   policy:"potential",  multipliers:{ baseline:0.0, china_escalates_partial:0.0, china_escalates_full:0.2, western_buildout:1.0, processing_integration:0.3 }, note:"Flow to planned Eneabba refinery. Only active under Western Capacity Expansion." },
+
+  // Processing → Demand
+  { id:"china_proc_def_usa",      source:"China Processing",     target:"Defense USA",             baseline_kt:3,   policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:0.2, china_escalates_full:0.0, western_buildout:0.1, processing_integration:0.7 }, note:"FEOC rules targeting this flow. Zero under full export controls." },
+  { id:"china_proc_def_eu",       source:"China Processing",     target:"Defense EU",              baseline_kt:2,   policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:0.2, china_escalates_full:0.0, western_buildout:0.1, processing_integration:0.6 }, note:"EU has no FEOC equivalent but export controls achieve same effect under escalation." },
+  { id:"china_proc_ev_asia",      source:"China Processing",     target:"EV Wind Asia OEMs",       baseline_kt:45,  policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:0.7, china_escalates_full:0.3, western_buildout:0.7, processing_integration:0.9 }, note:"Largest single REE trade corridor globally." },
+  { id:"china_proc_ev_us",        source:"China Processing",     target:"EV Wind US OEMs",         baseline_kt:15,  policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:0.4, china_escalates_full:0.05,western_buildout:0.3, processing_integration:0.8 }, note:"25% tariff on RE magnet imports from China effective 2026." },
+  { id:"china_proc_ev_eu",        source:"China Processing",     target:"EV Wind EU OEMs",         baseline_kt:12,  policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:0.5, china_escalates_full:0.1, western_buildout:0.4, processing_integration:0.8 }, note:"CRMA driving diversification but no FEOC equivalent yet." },
+  { id:"china_proc_electronics",  source:"China Processing",     target:"Consumer Electronics",    baseline_kt:25,  policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:0.8, china_escalates_full:0.4, western_buildout:0.8, processing_integration:1.0 }, note:"Consumer electronics largely insulated from Western supply chain policy." },
+
+  { id:"lynas_def_usa",           source:"Lynas Malaysia",       target:"Defense USA",             baseline_kt:0.3, policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:2.5, china_escalates_full:4.0, western_buildout:3.5, processing_integration:1.5 }, note:"Pentagon-backed offtake. HREE circuit now operational." },
+  { id:"lynas_def_eu",            source:"Lynas Malaysia",       target:"Defense EU",              baseline_kt:0.2, policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:2.0, china_escalates_full:3.5, western_buildout:3.0, processing_integration:1.3 }, note:"Effectively sole non-Chinese HREE source for EU defense procurement." },
+  { id:"lynas_ev_asia",           source:"Lynas Malaysia",       target:"EV Wind Asia OEMs",       baseline_kt:10,  policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:1.5, china_escalates_full:1.8, western_buildout:2.2, processing_integration:1.2 }, note:"Primary commercial market for Lynas NdPr." },
+  { id:"lynas_ev_eu",             source:"Lynas Malaysia",       target:"EV Wind EU OEMs",         baseline_kt:2,   policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:1.8, china_escalates_full:2.5, western_buildout:2.5, processing_integration:1.3 }, note:"Under Defense Weighted, EU OEM procurement competes with EU Defense for Lynas output." },
+
+  { id:"mp_def_usa",              source:"MP Materials California",target:"Defense USA",           baseline_kt:0.5, policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:2.5, china_escalates_full:4.0, western_buildout:5.0, processing_integration:1.8 }, note:"Core Pentagon supply relationship." },
+  { id:"mp_ev_us",                source:"MP Materials California",target:"EV Wind US OEMs",       baseline_kt:0.8, policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:2.0, china_escalates_full:3.0, western_buildout:4.0, processing_integration:1.5 }, note:"GM as founding customer. IRA Section 45X credits." },
+  { id:"mp_ev_asia",              source:"MP Materials California",target:"EV Wind Asia OEMs",     baseline_kt:0.5, policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:1.5, china_escalates_full:2.5, western_buildout:3.0, processing_integration:1.2 }, note:"Via Sumitomo for Japan; Korea direct." },
+
+  { id:"neo_def_eu",              source:"Neo Performance Estonia",target:"Defense EU",            baseline_kt:1,   policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:2.0, china_escalates_full:3.0, western_buildout:3.5, processing_integration:1.5 }, note:"Only EU separator serving EU defense. 2kt capacity — severely under-scaled for ReArm Europe." },
+  { id:"neo_ev_eu",               source:"Neo Performance Estonia",target:"EV Wind EU OEMs",       baseline_kt:1,   policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:1.5, china_escalates_full:2.0, western_buildout:2.5, processing_integration:1.2 }, note:"Neo output split between defense and OEM — central EU supply tension." },
+
+  { id:"ef_def_usa",              source:"Energy Fuels Utah",    target:"Defense USA",             baseline_kt:0.1, policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:2.0, china_escalates_full:3.0, western_buildout:4.0, processing_integration:1.3 }, note:"Pilot scale. Commercial HREE separation targeted late 2026." }
+];
+
+// ============================================================
+// STATE
+// ============================================================
+let currentScenario = "baseline";
+let currentDemand   = "green_tech";
+let currentLayer    = "all";
+
+// ============================================================
+// MAP SETUP
+// ============================================================
+const mapEl   = document.getElementById("map");
+const tooltip = document.getElementById("tooltip");
+
+function getMapDimensions() {
+  return { width: mapEl.clientWidth || 900, height: mapEl.clientHeight || 600 };
+}
+
+let { width, height } = getMapDimensions();
+
+const svg = d3.select("#map")
+  .attr("viewBox", `0 0 ${width} ${height}`)
+  .attr("preserveAspectRatio", "xMidYMid meet");
+
+const projection = d3.geoNaturalEarth1()
+  .scale(width * 0.175)
+  .translate([width / 2, height / 2 + 20]);
+
+const pathGen = d3.geoPath().projection(projection);
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+function getScenarioVolume(flow, scenario, demandComp) {
+  const mult  = flow.multipliers[scenario] || 1.0;
+  const baseV = flow.baseline_kt;
+  let vol     = baseV * mult;
+
+  // Apply demand composition multiplier to demand-facing flows
+  const targetNode = NODES[flow.target];
+  if (targetNode && targetNode.type === "demand") {
+    const demandMult = DEMAND_COMPOSITIONS[demandComp].multipliers[flow.target] || 1.0;
+    vol *= demandMult;
+  }
+  return vol;
+}
+
+function isPlannedNode(name) {
+  return NODES[name] && NODES[name].status === "planned";
+}
+
+function shouldShowPlannedNode(scenario) {
+  return scenario === "western_buildout";
+}
+
+function flowColor(policy) {
+  if (policy === "conflict")   return "#e76f51";
+  if (policy === "contested")  return "#f0c040";
+  if (policy === "potential")  return "#3aaa8f";
+  return "#4a9eca";
+}
+
+function showTooltip(event, html) {
+  tooltip.innerHTML = html;
+  tooltip.classList.add("visible");
+  moveTooltip(event);
+}
+
+function moveTooltip(event) {
+  const x = event.clientX + 14;
+  const y = event.clientY - 10;
+  const tw = 300;
+  tooltip.style.left = (x + tw > window.innerWidth ? x - tw - 28 : x) + "px";
+  tooltip.style.top  = Math.max(10, y) + "px";
+}
+
+function hideTooltip() {
+  tooltip.classList.remove("visible");
+}
+
+// ============================================================
+// METRIC COMPUTATION
+// ============================================================
+
+function computeMetrics(scenario, demandComp) {
+  // US Defense dependency
+  const usDef_china    = FLOWS.filter(f => f.source === "China Processing" && f.target === "Defense USA")
+                              .reduce((s,f) => s + getScenarioVolume(f, scenario, demandComp), 0);
+  const usDef_nonchina = FLOWS.filter(f => f.target === "Defense USA" && f.source !== "China Processing")
+                              .reduce((s,f) => s + getScenarioVolume(f, scenario, demandComp), 0);
+  const usDef_total    = usDef_china + usDef_nonchina;
+  const usDef_pct      = usDef_total > 0 ? Math.round((usDef_china / usDef_total) * 100) : 0;
+
+  // EU Defense dependency
+  const euDef_china    = FLOWS.filter(f => f.source === "China Processing" && f.target === "Defense EU")
+                              .reduce((s,f) => s + getScenarioVolume(f, scenario, demandComp), 0);
+  const euDef_nonchina = FLOWS.filter(f => f.target === "Defense EU" && f.source !== "China Processing")
+                              .reduce((s,f) => s + getScenarioVolume(f, scenario, demandComp), 0);
+  const euDef_total    = euDef_china + euDef_nonchina;
+  const euDef_pct      = euDef_total > 0 ? Math.round((euDef_china / euDef_total) * 100) : 0;
+
+  // FEOC exposure (Western OEMs)
+  const feoc_china     = FLOWS.filter(f => f.source === "China Processing" && (f.target === "EV Wind US OEMs" || f.target === "EV Wind EU OEMs"))
+                              .reduce((s,f) => s + getScenarioVolume(f, scenario, demandComp), 0);
+  const feoc_nonchina  = FLOWS.filter(f => f.source !== "China Processing" && (f.target === "EV Wind US OEMs" || f.target === "EV Wind EU OEMs"))
+                              .reduce((s,f) => s + getScenarioVolume(f, scenario, demandComp), 0);
+  const feoc_total     = feoc_china + feoc_nonchina;
+  const feoc_pct       = feoc_total > 0 ? Math.round((feoc_china / feoc_total) * 100) : 0;
+
+  // New producer routing
+  const newProducers   = ["Myanmar Kachin","Nigeria","Thailand","Vietnam"];
+  const np_china       = FLOWS.filter(f => newProducers.includes(f.source) && f.target === "China Processing")
+                              .reduce((s,f) => s + getScenarioVolume(f, scenario, demandComp), 0);
+  const np_nonchina    = FLOWS.filter(f => newProducers.includes(f.source) && f.target !== "China Processing")
+                              .reduce((s,f) => s + getScenarioVolume(f, scenario, demandComp), 0);
+  const np_total       = np_china + np_nonchina;
+  const np_pct         = np_total > 0 ? Math.round((np_china / np_total) * 100) : 0;
+
+  return { usDef_pct, euDef_pct, feoc_pct, np_pct };
+}
+
+function annotate(pct, high, mod) {
+  if (pct >= high) return { text: "Highly concentrated", cls: "high" };
+  if (pct >= mod)  return { text: "Moderately concentrated", cls: "mod" };
+  return { text: "Less concentrated", cls: "" };
+}
+
+function updateMetrics(scenario, demandComp) {
+  const m = computeMetrics(scenario, demandComp);
+
+  const metrics = [
+    { pct: m.usDef_pct, valEl: "val-us-defense", barEl: "bar-us-defense", annEl: "ann-us-defense", high:80, mod:50 },
+    { pct: m.euDef_pct, valEl: "val-eu-defense", barEl: "bar-eu-defense", annEl: "ann-eu-defense", high:80, mod:50 },
+    { pct: m.feoc_pct,  valEl: "val-feoc",        barEl: "bar-feoc",        annEl: "ann-feoc",       high:70, mod:40 },
+    { pct: m.np_pct,    valEl: "val-routing",     barEl: "bar-routing",     annEl: "ann-routing",    high:85, mod:60 }
+  ];
+
+  metrics.forEach(({ pct, valEl, barEl, annEl, high, mod }) => {
+    document.getElementById(valEl).textContent = pct + "%";
+    document.getElementById(barEl).style.width = pct + "%";
+    const ann = annotate(pct, high, mod);
+    const el  = document.getElementById(annEl);
+    el.textContent  = ann.text;
+    el.className    = "metric-annotation " + ann.cls;
+  });
+}
+
+// ============================================================
+// RENDER MAP
+// ============================================================
+
+let flowLines, nodeGroups;
+
+function buildMap(world) {
+  // Ocean
+  svg.append("path")
+    .datum({ type: "Sphere" })
+    .attr("class", "sphere")
+    .attr("d", pathGen);
+
+  // Graticule
+  svg.append("path")
+    .datum(d3.geoGraticule()())
+    .attr("class", "graticule")
+    .attr("d", pathGen);
+
+  // Countries
+  svg.append("g")
+    .selectAll("path")
+    .data(topojson.feature(world, world.objects.countries).features)
+    .join("path")
+    .attr("class", "country")
+    .attr("d", pathGen);
+
+  // Flows group (behind nodes)
+  const flowsG = svg.append("g").attr("class", "flows");
+
+  flowLines = flowsG.selectAll("path")
+    .data(FLOWS)
+    .join("path")
+    .attr("class", d => {
+      let cls = "flow-line";
+      if (d.policy === "potential") cls += " potential";
+      return cls;
+    })
+    .attr("d", d => flowPath(d))
+    .attr("stroke", d => flowColor(d.policy))
+    .attr("stroke-width", d => flowWidth(d, currentScenario, currentDemand))
+    .attr("opacity", d => d.policy === "potential" ? 0.35 : 0.55)
+    .on("mouseover", function(event, d) {
+      if (!this.style.display || this.style.display === "none") return;
+      d3.select(this).attr("opacity", 0.95);
+      const vol = getScenarioVolume(d, currentScenario, currentDemand);
+      showTooltip(event, `
+        <div class="tt-title">${d.source} → ${d.target}</div>
+        <div class="tt-row"><span class="lbl">Volume (scenario)</span><span class="val">${vol.toFixed(1)}kt REO</span></div>
+        <div class="tt-row"><span class="lbl">Baseline</span><span class="val">${d.baseline_kt}kt REO</span></div>
+        <div class="tt-row"><span class="lbl">Multiplier</span><span class="val">×${d.multipliers[currentScenario]}</span></div>
+        <div class="tt-note">${d.note}</div>
+        ${d.policy !== "standard" ? `<span class="tt-tag ${d.policy}">${d.policy.toUpperCase()}</span>` : ""}
+      `);
+    })
+    .on("mousemove", (event) => moveTooltip(event))
+    .on("mouseout", function(event, d) {
+      d3.select(this).attr("opacity", d.policy === "potential" ? 0.35 : 0.55);
+      hideTooltip();
+    });
+
+  // Nodes group
+  const nodesG = svg.append("g").attr("class", "nodes");
+
+  const nodeData = Object.entries(NODES).map(([name, data]) => ({
+    name, ...data,
+    projected: projection(data.coords)
+  }));
+
+  nodeGroups = nodesG.selectAll("g")
+    .data(nodeData)
+    .join("g")
+    .attr("transform", d => `translate(${d.projected[0]},${d.projected[1]})`);
+
+  // Circles
+  nodeGroups.append("circle")
+    .attr("class", d => {
+      if (d.status === "planned") return "node-planned";
+      return `node-${d.type}`;
+    })
+    .attr("r", d => nodeRadius(d))
+    .on("mouseover", function(event, d) {
+      if (!isNodeVisible(d.name)) return;
+      // Highlight connected flows
+      flowLines.classed("faded", f => f.source !== d.name && f.target !== d.name);
+      const vol = d.volume_kt || d.capacity_kt || 0;
+      const volLabel = d.type === "mining" ? "Production" : d.type === "processing" ? "Capacity" : "Demand";
+      showTooltip(event, `
+        <div class="tt-title">${d.flag || ""} ${d.name}</div>
+        <div class="tt-row"><span class="lbl">Type</span><span class="val">${d.type.charAt(0).toUpperCase()+d.type.slice(1)}</span></div>
+        ${vol ? `<div class="tt-row"><span class="lbl">${volLabel}</span><span class="val">${vol}kt REO (${d.pct})</span></div>` : ""}
+        ${d.ree_type ? `<div class="tt-row"><span class="lbl">REE type</span><span class="val">${d.ree_type}</span></div>` : ""}
+        <div class="tt-note">${d.note}</div>
+        <div style="font-family:var(--mono);font-size:9px;color:#3d4f62;margin-top:6px">Source: ${d.source}</div>
+        ${d.policy === "conflict"  ? '<span class="tt-tag conflict">CONFLICT-AFFECTED</span>' : ""}
+        ${d.policy === "contested" ? '<span class="tt-tag contested">GEOPOLITICALLY CONTESTED</span>' : ""}
+      `);
+    })
+    .on("mousemove", (event) => moveTooltip(event))
+    .on("mouseout", function() {
+      flowLines.classed("faded", false);
+      applyLayerFilter();
+      hideTooltip();
+    });
+
+  // Labels
+  nodeGroups.append("text")
+    .attr("class", "node-label")
+    .attr("dy", d => -(nodeRadius(d) + 5))
+    .text(d => shortName(d.name));
+
+  // Initial render
+  updateScenario(currentScenario);
+}
+
+function nodeRadius(d) {
+  const v = d.volume_kt || d.capacity_kt || 2;
+  if (d.status === "planned") return 7;
+  return Math.max(6, Math.min(22, Math.sqrt(v) * 2.2));
+}
+
+function shortName(name) {
+  const map = {
+    "China Mining":          "China",
+    "USA Mountain Pass":     "Mountain Pass",
+    "Australia Mt Weld":     "Mt Weld",
+    "Myanmar Kachin":        "Myanmar",
+    "Nigeria":               "Nigeria",
+    "Thailand":              "Thailand",
+    "Vietnam":               "Vietnam",
+    "Russia":                "Russia",
+    "China Processing":      "China",
+    "Lynas Malaysia":        "Lynas",
+    "MP Materials California":"MP Materials",
+    "Neo Performance Estonia":"Neo / Estonia",
+    "Energy Fuels Utah":     "Energy Fuels",
+    "Lynas Texas":           "Lynas TX ⚠",
+    "Iluka Eneabba":         "Iluka ⚠",
+    "Defense USA":           "US Defense",
+    "Defense EU":            "EU Defense",
+    "EV Wind Asia OEMs":     "Asia OEMs",
+    "EV Wind US OEMs":       "US OEMs",
+    "EV Wind EU OEMs":       "EU OEMs",
+    "Consumer Electronics":  "Electronics"
+  };
+  return map[name] || name;
+}
+
+function flowPath(d) {
+  const src = NODES[d.source];
+  const tgt = NODES[d.target];
+  if (!src || !tgt) return "";
+  const [x1,y1] = projection(src.coords);
+  const [x2,y2] = projection(tgt.coords);
+  const dx = x2-x1, dy = y2-y1;
+  const dr = Math.sqrt(dx*dx+dy*dy) * 0.65;
+  return `M${x1},${y1}A${dr},${dr} 0 0,1 ${x2},${y2}`;
+}
+
+function flowWidth(flow, scenario, demandComp) {
+  const vol = getScenarioVolume(flow, scenario, demandComp);
+  if (vol === 0) return 0;
+  return Math.max(0.8, Math.min(8, Math.sqrt(vol) * 0.7));
+}
+
+function isNodeVisible(name) {
+  const node = NODES[name];
+  if (!node) return false;
+  if (node.status === "planned") return shouldShowPlannedNode(currentScenario);
+  return true;
+}
+
+// ============================================================
+// UPDATE SCENARIO
+// ============================================================
+
+function updateScenario(scenario) {
+  currentScenario = scenario;
+  const sc = SCENARIOS[scenario];
+
+  // Update description panel
+  document.getElementById("scenario-dot").style.background = sc.color;
+  document.getElementById("scenario-name-text").textContent = sc.label;
+  document.getElementById("scenario-desc-text").textContent = sc.description;
+
+  // Update flow widths and visibility
+  flowLines
+    .attr("stroke-width", d => {
+      const vol = getScenarioVolume(d, scenario, currentDemand);
+      return flowWidth(d, scenario, currentDemand);
+    })
+    .style("display", d => {
+      const vol = getScenarioVolume(d, scenario, currentDemand);
+      // Hide planned node flows unless western_buildout
+      if (d.policy === "potential" && scenario !== "western_buildout" && vol === 0) return "none";
+      if ((isPlannedNode(d.source) || isPlannedNode(d.target)) && !shouldShowPlannedNode(scenario)) return "none";
+      if (vol < 0.05) return "none";
+      return null;
+    });
+
+  // Update node visibility (planned nodes)
+  nodeGroups.style("display", d => {
+    if (d.status === "planned") {
+      return shouldShowPlannedNode(scenario) ? null : "none";
+    }
+    return null;
+  });
+
+  // Apply layer filter after scenario change
+  applyLayerFilter();
+
+  // Update metrics
+  updateMetrics(scenario, currentDemand);
+}
+
+// ============================================================
+// LAYER FILTER
+// ============================================================
+
+function applyLayerFilter() {
+  if (!flowLines) return;
+
+  flowLines.classed("faded", d => {
+    const vol = getScenarioVolume(d, currentScenario, currentDemand);
+    if (vol < 0.05) return true;
+
+    switch(currentLayer) {
+      case "all":       return false;
+      case "mining":    return NODES[d.source]?.type !== "mining";
+      case "processing":return NODES[d.source]?.type !== "processing" && NODES[d.target]?.type !== "processing";
+      case "demand":    return NODES[d.target]?.type !== "demand";
+      case "china":     return !d.source.toLowerCase().includes("china") && !d.target.toLowerCase().includes("china");
+      case "potential": return d.policy !== "potential" && d.policy !== "contested";
+      default:          return false;
+    }
+  });
+
+  if (nodeGroups) {
+    nodeGroups.style("opacity", d => {
+      if (currentLayer === "all") return 1;
+      if (currentLayer === "mining")     return d.type === "mining"     ? 1 : 0.25;
+      if (currentLayer === "processing") return d.type === "processing" ? 1 : 0.25;
+      if (currentLayer === "demand")     return d.type === "demand"     ? 1 : 0.25;
+      if (currentLayer === "china")      return d.name.toLowerCase().includes("china") ? 1 : 0.25;
+      if (currentLayer === "potential")  return 1;
+      return 1;
+    });
+  }
+}
+
+// ============================================================
+// CONTROLS
+// ============================================================
+
+document.querySelectorAll(".scenario-btn").forEach(btn => {
+  btn.addEventListener("click", function() {
+    document.querySelectorAll(".scenario-btn").forEach(b => b.classList.remove("active"));
+    this.classList.add("active");
+    updateScenario(this.dataset.scenario);
+  });
+});
+
+document.querySelectorAll(".demand-btn").forEach(btn => {
+  btn.addEventListener("click", function() {
+    document.querySelectorAll(".demand-btn").forEach(b => b.classList.remove("active"));
+    this.classList.add("active");
+    currentDemand = this.dataset.demand;
+    updateScenario(currentScenario);
+  });
+});
+
+document.querySelectorAll(".layer-btn").forEach(btn => {
+  btn.addEventListener("click", function() {
+    document.querySelectorAll(".layer-btn").forEach(b => b.classList.remove("active"));
+    this.classList.add("active");
+    currentLayer = this.dataset.layer;
+    applyLayerFilter();
+  });
+});
+
+// ============================================================
+// INIT
+// ============================================================
+
+d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
+  .then(world => {
+    buildMap(world);
+    updateMetrics(currentScenario, currentDemand);
+  })
+  .catch(err => {
+    console.error("Failed to load world atlas:", err);
+  });
+
+// Resize handler
+window.addEventListener("resize", () => {
+  const d = getMapDimensions();
+  svg.attr("viewBox", `0 0 ${d.width} ${d.height}`);
+  projection.scale(d.width * 0.175).translate([d.width/2, d.height/2+20]);
+  if (flowLines) flowLines.attr("d", d => flowPath(d));
+  if (nodeGroups) nodeGroups.attr("transform", d => {
+    const [px,py] = projection(d.coords);
+    return `translate(${px},${py})`;
+  });
+});
+</script>
+</body>
+</html>
