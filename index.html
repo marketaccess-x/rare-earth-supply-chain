@@ -903,6 +903,7 @@ const pathGen = d3.geoPath().projection(projection);
 let dragStart = null;
 
 svg.call(d3.drag()
+  .filter(event => !event.target.closest || !event.target.closest(".nodes"))
   .on("start", (event) => {
     dragStart = { x: event.x, y: event.y, rotate: [...rotate] };
     mapArea.style.cursor = "grabbing";
@@ -922,17 +923,18 @@ svg.call(d3.drag()
   .on("end", () => {
     dragStart = null;
     mapArea.style.cursor = "grab";
+  })
+);
 
 // Click on globe background resets to world view
 svg.on("click", function(event) {
-  if (event.target.classList.contains("country") || event.target === this ||
-      event.target.id === "sphere-path" || event.target.classList.contains("sphere-glow") ||
-      event.target.classList.contains("graticule")) {
+  const cls = event.target.classList;
+  if (cls.contains("country") || cls.contains("sphere") ||
+      cls.contains("sphere-glow") || cls.contains("graticule") ||
+      event.target === this) {
     resetView();
   }
 });
-  })
-);
 
 // ── SCROLL TO ZOOM ──────────────────────────────────────────
 svg.on("wheel", (event) => {
@@ -1005,15 +1007,6 @@ document.getElementById("zoom-out").addEventListener("click", () => {
 document.getElementById("zoom-reset").addEventListener("click", () => resetView());
 
 mapArea.style.cursor = "grab";
-
-// Click on globe background resets to world view
-svg.on("click", function(event) {
-  if (event.target.classList.contains("country") || event.target === this ||
-      event.target.id === "sphere-path" || event.target.classList.contains("sphere-glow") ||
-      event.target.classList.contains("graticule")) {
-    resetView();
-  }
-});
 
 // ============================================================
 // HELPERS
@@ -1256,6 +1249,14 @@ function buildMap(world) {
     .data(nodeData)
     .join("g");
 
+  // Click on node group (circle or label) -> fly to that node
+  nodeGroups
+    .style("cursor", "pointer")
+    .on("click", function(event, d) {
+      event.stopPropagation();
+      flyTo(d.coords);
+    });
+
   nodeGroups.append("circle")
     .attr("class", d => d.status === "planned" ? "node-planned" : `node-${d.type}`)
     .attr("r", d => nodeRadius(d))
@@ -1275,11 +1276,6 @@ function buildMap(world) {
       `);
     })
     .on("mousemove", (event) => moveTooltip(event))
-    .on("click", function(event, d) {
-      event.stopPropagation();
-      if (!isOnFrontHemisphere(d.coords)) return;
-      flyTo(d.coords);
-    })
     .on("mouseout", function() {
       flowLines.classed("faded", false);
       applyLayerFilter();
