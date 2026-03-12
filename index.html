@@ -338,6 +338,7 @@
 
     /* Nodes */
     .node-mining    { fill: var(--c-mining);     stroke: rgba(255,255,255,0.6); stroke-width: 1.2px; cursor: pointer; transition: all 0.2s; }
+    .node-label { cursor: default; }
     .node-processing{ fill: var(--c-processing);  stroke: rgba(255,255,255,0.6); stroke-width: 1.2px; cursor: pointer; transition: all 0.2s; }
     .node-demand    { fill: var(--c-demand);      stroke: rgba(255,255,255,0.6); stroke-width: 1.2px; cursor: pointer; transition: all 0.2s; }
     .node-planned   { fill: var(--c-planned);     stroke: #4a9eca; stroke-width: 1.2px; stroke-dasharray: 3,2; cursor: pointer; transition: all 0.2s; opacity: 0.7; }
@@ -921,6 +922,15 @@ svg.call(d3.drag()
   .on("end", () => {
     dragStart = null;
     mapArea.style.cursor = "grab";
+
+// Click on globe background resets to world view
+svg.on("click", function(event) {
+  if (event.target.classList.contains("country") || event.target === this ||
+      event.target.id === "sphere-path" || event.target.classList.contains("sphere-glow") ||
+      event.target.classList.contains("graticule")) {
+    resetView();
+  }
+});
   })
 );
 
@@ -941,28 +951,44 @@ const REGIONS = {
   americas: [90, -35]
 };
 
-function rotateTo(target, duration = 650) {
-  const start = [...rotate];
+const BASE_SCALE = () => Math.min(width, height) * 0.44;
+const NODE_ZOOM_SCALE = () => Math.min(width, height) * 1.1;
+
+function rotateTo(targetRotate, targetScale, duration = 750) {
+  const startRotate = [...rotate];
+  const startScale  = globeScale;
+  const endScale    = targetScale !== undefined ? targetScale : startScale;
   const t0 = Date.now();
   function tick() {
     const t = Math.min(1, (Date.now() - t0) / duration);
-    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // ease-in-out
+    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
     rotate = [
-      start[0] + (target[0] - start[0]) * ease,
-      start[1] + (target[1] - start[1]) * ease
+      startRotate[0] + (targetRotate[0] - startRotate[0]) * ease,
+      startRotate[1] + (targetRotate[1] - startRotate[1]) * ease
     ];
-    projection.rotate(rotate);
+    globeScale = startScale + (endScale - startScale) * ease;
+    projection.rotate(rotate).scale(globeScale);
     redraw();
     if (t < 1) requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
 }
 
+function flyTo(coords) {
+  rotateTo([-coords[0], -coords[1]], NODE_ZOOM_SCALE(), 800);
+}
+
+function resetView() {
+  rotateTo(REGIONS.world, BASE_SCALE(), 700);
+  document.querySelectorAll(".region-btn").forEach(b => b.classList.remove("active"));
+  document.querySelector('[data-region="world"]').classList.add("active");
+}
+
 document.querySelectorAll(".region-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".region-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
-    rotateTo(REGIONS[btn.dataset.region] || REGIONS.world);
+    rotateTo(REGIONS[btn.dataset.region] || REGIONS.world, BASE_SCALE(), 750);
   });
 });
 
@@ -976,13 +1002,18 @@ document.getElementById("zoom-out").addEventListener("click", () => {
   projection.scale(globeScale);
   redraw();
 });
-document.getElementById("zoom-reset").addEventListener("click", () => {
-  globeScale = Math.min(width, height) * 0.44;
-  projection.scale(globeScale);
-  rotateTo(REGIONS.world);
-});
+document.getElementById("zoom-reset").addEventListener("click", () => resetView());
 
 mapArea.style.cursor = "grab";
+
+// Click on globe background resets to world view
+svg.on("click", function(event) {
+  if (event.target.classList.contains("country") || event.target === this ||
+      event.target.id === "sphere-path" || event.target.classList.contains("sphere-glow") ||
+      event.target.classList.contains("graticule")) {
+    resetView();
+  }
+});
 
 // ============================================================
 // HELPERS
@@ -1244,6 +1275,11 @@ function buildMap(world) {
       `);
     })
     .on("mousemove", (event) => moveTooltip(event))
+    .on("click", function(event, d) {
+      event.stopPropagation();
+      if (!isOnFrontHemisphere(d.coords)) return;
+      flyTo(d.coords);
+    })
     .on("mouseout", function() {
       flowLines.classed("faded", false);
       applyLayerFilter();
