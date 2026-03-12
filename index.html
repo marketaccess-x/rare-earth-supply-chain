@@ -92,9 +92,33 @@
     /* ── LAYOUT ── */
     .app {
       display: grid;
-      grid-template-columns: 220px 1fr 260px;
+      grid-template-columns: minmax(180px, 220px) 1fr minmax(210px, 260px);
       grid-template-rows: 1fr;
       height: calc(100vh - 49px);
+    }
+
+    /* Tighter panels when viewport is constrained (Wix iframe) */
+    @media (max-width: 1100px) {
+      .app {
+        grid-template-columns: minmax(160px, 190px) 1fr minmax(180px, 220px);
+      }
+      .panel-section { padding: 11px 12px; }
+      .scenario-btn  { font-size: 0.72rem; padding: 7px 10px; }
+      .metric-block  { padding: 9px 12px; }
+      .stats-grid    { padding: 10px 12px; }
+      .scenario-desc { padding: 10px 12px; }
+    }
+
+    @media (max-width: 900px) {
+      .app {
+        grid-template-columns: minmax(140px, 165px) 1fr minmax(155px, 190px);
+      }
+      .panel-section { padding: 8px 10px; }
+      .panel-label   { font-size: 0.55rem; }
+      .scenario-btn  { font-size: 0.68rem; padding: 6px 8px; }
+      .metric-value  { font-size: 1rem; }
+      .metric-block  { padding: 7px 10px; }
+      .stats-grid    { padding: 8px 10px; }
     }
 
     /* ── LEFT PANEL ── */
