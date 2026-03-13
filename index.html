@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=1280, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rare Earth Supply Chain | Market Access X</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
@@ -91,35 +91,19 @@
 
     /* ── LAYOUT ── */
     .app {
-      position: relative;
-      width: 100%;
+      display: grid;
+      grid-template-columns: 230px 1fr 260px;
+      grid-template-rows: 1fr;
       height: calc(100vh - 49px);
-      overflow: hidden;
     }
 
     /* ── LEFT PANEL ── */
     .panel-left {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      width: 340px;
-      max-height: calc(100% - 24px);
-      background: rgba(232,236,244,0.94);
-      border: 1px solid var(--border2);
-      border-radius: 8px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       overflow-y: auto;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      z-index: 200;
-      transition: transform 0.25s ease, opacity 0.25s ease;
-    }
-    .panel-left.collapsed {
-      transform: translateX(calc(-100% - 16px));
-      opacity: 0;
-      pointer-events: none;
     }
 
     .panel-section {
@@ -322,8 +306,7 @@
 
     /* ── MAP ── */
     .map-area {
-      position: absolute;
-      inset: 0;
+      position: relative;
       background: radial-gradient(ellipse at center, #edf1f7 0%, #dde4ef 100%);
       overflow: hidden;
     }
@@ -443,55 +426,12 @@
 
     /* ── RIGHT PANEL ── */
     .panel-right {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      width: 340px;
-      max-height: calc(100% - 24px);
-      background: rgba(232,236,244,0.94);
-      border: 1px solid var(--border2);
-      border-radius: 8px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+      background: var(--bg2);
+      border-left: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       overflow-y: auto;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      z-index: 200;
-      transition: transform 0.25s ease, opacity 0.25s ease;
     }
-    .panel-right.collapsed {
-      transform: translateX(calc(100% + 16px));
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    /* Panel toggle buttons */
-    .panel-toggle {
-      position: absolute;
-      top: 12px;
-      z-index: 300;
-      background: rgba(232,236,244,0.94);
-      border: 1px solid var(--border2);
-      border-radius: 6px;
-      width: 28px;
-      height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      font-size: 13px;
-      color: var(--text-dim);
-      backdrop-filter: blur(8px);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      transition: all 0.15s;
-      line-height: 1;
-    }
-    .panel-toggle:hover { background: rgba(210,218,232,0.98); color: var(--text); }
-    .panel-toggle-left  { left: 12px; }
-    .panel-toggle-right { right: 12px; }
-    .panel-toggle-left.open  { left: 358px; }
-    .panel-toggle-right.open { right: 358px; }
 
     /* Scenario description */
     .scenario-desc {
@@ -617,26 +557,6 @@
 
 <div class="app">
 
-  <!-- ── MAP (full bleed) ── -->
-  <div class="map-area" id="map-area">
-    <svg id="map"></svg>
-    <div class="region-controls">
-      <button class="region-btn active" data-region="world">World</button>
-      <button class="region-btn" data-region="asia">Asia</button>
-      <button class="region-btn" data-region="europe">Europe</button>
-      <button class="region-btn" data-region="americas">Americas</button>
-    </div>
-    <div class="zoom-controls">
-      <button class="zoom-btn" id="zoom-in"  title="Zoom in">+</button>
-      <button class="zoom-btn" id="zoom-out" title="Zoom out">−</button>
-      <button class="zoom-btn" id="zoom-reset" title="Reset view" style="font-size:10px">⌂</button>
-    </div>
-  </div>
-
-  <!-- Panel toggle buttons -->
-  <button class="panel-toggle panel-toggle-left open" id="toggle-left" title="Toggle controls">☰</button>
-  <button class="panel-toggle panel-toggle-right open" id="toggle-right" title="Toggle metrics">≡</button>
-
   <!-- ── LEFT PANEL ── -->
   <div class="panel-left" id="panel-left">
 
@@ -724,6 +644,22 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- ── MAP ── -->
+  <div class="map-area" id="map-area">
+    <svg id="map"></svg>
+    <div class="region-controls">
+      <button class="region-btn active" data-region="world">World</button>
+      <button class="region-btn" data-region="asia">Asia</button>
+      <button class="region-btn" data-region="europe">Europe</button>
+      <button class="region-btn" data-region="americas">Americas</button>
+    </div>
+    <div class="zoom-controls">
+      <button class="zoom-btn" id="zoom-in"  title="Zoom in">+</button>
+      <button class="zoom-btn" id="zoom-out" title="Zoom out">−</button>
+      <button class="zoom-btn" id="zoom-reset" title="Reset view" style="font-size:10px">⌂</button>
+    </div>
   </div>
 
   <!-- ── RIGHT PANEL ── -->
@@ -1528,23 +1464,6 @@ d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
     updateMetrics(currentScenario, currentDemand);
   })
   .catch(err => console.error("Failed to load world atlas:", err));
-
-// ── PANEL TOGGLES ───────────────────────────────────────────
-document.getElementById("toggle-left").addEventListener("click", function() {
-  const panel = document.getElementById("panel-left");
-  const isOpen = !panel.classList.contains("collapsed");
-  panel.classList.toggle("collapsed");
-  this.textContent = isOpen ? "☰" : "✕";
-  this.classList.toggle("open", !isOpen);
-});
-
-document.getElementById("toggle-right").addEventListener("click", function() {
-  const panel = document.getElementById("panel-right");
-  const isOpen = !panel.classList.contains("collapsed");
-  panel.classList.toggle("collapsed");
-  this.textContent = isOpen ? "≡" : "✕";
-  this.classList.toggle("open", !isOpen);
-});
 
 window.addEventListener("resize", () => {
   const dims = getMapDimensions();
