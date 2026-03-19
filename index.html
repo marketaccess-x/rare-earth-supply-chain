@@ -1636,6 +1636,7 @@ window.addEventListener("resize", () => {
     align-items: center;
     gap: 4px;
   }
+   .modal-close {
     background: #2a6e9e;
     color: white;
     border: none;
@@ -1694,8 +1695,7 @@ window.addEventListener("resize", () => {
   // Also close if user clicks the overlay background
   document.getElementById("welcome-modal").addEventListener("click", function(e) {
     if (e.target === this) this.classList.add("hidden");
-  });
-</script>
+
   });
 </script>
 <div style="background:rgba(42,110,158,0.25);border:1px solid rgba(79,195,247,0.2);border-radius:8px;padding:24px 28px;margin:20px 0;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;">
