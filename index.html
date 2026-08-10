@@ -570,7 +570,40 @@
       100% { opacity: 1; }
     }
     .scenario-change { animation: flash 0.3s ease-out; }
-  </style>
+  
+    /* ---------- narrow screens ---------- */
+    @media (max-width: 900px) {
+      /* the three-column shell is 570px wide at minimum, so on a phone the right panel is
+         pushed off-canvas and overflow-x:hidden makes it unreachable. use page flow instead. */
+      .app {
+        display: block;
+        height: auto;
+        grid-template-columns: none;
+      }
+      .panel-left, .panel-right {
+        overflow-y: visible;
+        border-left: none; border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      .panel-right { border-bottom: none; }
+      .map-area {
+        height: 84vw; min-height: 320px; max-height: 470px;
+        border-bottom: 1px solid var(--border);
+      }
+      /* a vertical drag must scroll the page; a horizontal one rotates the globe */
+      #map { touch-action: pan-y; }
+      .zoom-controls { bottom: 12px; right: 12px; }
+      .region-controls { bottom: 12px; left: 12px; flex-wrap: wrap; max-width: 60%; }
+      header { flex-wrap: wrap; gap: 8px; padding: 10px 14px; }
+      .modal-card { max-width: 94vw; max-height: 88vh; overflow-y: auto; }
+      .rotate-hint { display: block; }
+    }
+    .rotate-hint {
+      display: none; font-family: var(--mono, monospace); font-size: 0.62rem;
+      letter-spacing: 0.07em; text-transform: uppercase; color: #8898a8;
+      padding: 8px 14px; border-bottom: 1px solid var(--border);
+    }
+</style>
 ...
 <!-- Privacy-friendly analytics by Plausible -->
 <script async src="https://plausible.io/js/pa-ZVYSyBFUXb2PULyebMZu1.js"></script>
@@ -605,9 +638,9 @@
       <button class="scenario-btn active" data-scenario="baseline"
         style="--scenario-color:#78909c">Baseline 2025</button>
       <button class="scenario-btn" data-scenario="china_escalates_partial"
-        style="--scenario-color:#f4a261">Export Controls — Partial</button>
+        style="--scenario-color:#f4a261">Export Controls: Partial</button>
       <button class="scenario-btn" data-scenario="china_escalates_full"
-        style="--scenario-color:#e76f51">Export Controls — Full</button>
+        style="--scenario-color:#e76f51">Export Controls: Full</button>
       <button class="scenario-btn" data-scenario="western_buildout"
         style="--scenario-color:#457b9d">Western Capacity Expansion</button>
       <button class="scenario-btn" data-scenario="processing_integration"
@@ -645,7 +678,7 @@
     </div>
 
     <div class="panel-section">
-      <div class="panel-label">Legend — Nodes</div>
+      <div class="panel-label">Legend: Nodes</div>
       <div class="legend-item">
         <div class="legend-dot" style="background:var(--c-mining)"></div>
         <span>Mining / Extraction</span>
@@ -665,7 +698,7 @@
     </div>
 
     <div class="panel-section">
-      <div class="panel-label">Legend — Flows</div>
+      <div class="panel-label">Legend: Flows</div>
       <div class="legend-item">
         <div class="legend-line" style="background:#4a9eca"></div>
         <span>Established flow</span>
@@ -703,7 +736,8 @@
   </div>
 
   <!-- ── RIGHT PANEL ── -->
-  <div class="panel-right" id="panel-right">
+  <p class="rotate-hint">Swipe sideways to rotate the globe. Swipe up or down to scroll.</p>
+<div class="panel-right" id="panel-right">
 
     <div class="scenario-desc" id="scenario-desc">
       <div class="scenario-name">
@@ -719,28 +753,28 @@
 
     <div class="metric-block" id="metric-us-defense">
       <div class="metric-label">Chinese Supply Dependency<br>US Defense</div>
-      <div class="metric-value" id="val-us-defense">—</div>
+      <div class="metric-value" id="val-us-defense">–</div>
       <div class="metric-bar-wrap"><div class="metric-bar" id="bar-us-defense" style="width:0%"></div></div>
       <div class="metric-annotation" id="ann-us-defense"></div>
     </div>
 
     <div class="metric-block" id="metric-eu-defense">
       <div class="metric-label">Chinese Supply Dependency<br>EU Defense</div>
-      <div class="metric-value" id="val-eu-defense">—</div>
+      <div class="metric-value" id="val-eu-defense">–</div>
       <div class="metric-bar-wrap"><div class="metric-bar" id="bar-eu-defense" style="width:0%"></div></div>
       <div class="metric-annotation" id="ann-eu-defense"></div>
     </div>
 
     <div class="metric-block" id="metric-feoc">
       <div class="metric-label">FEOC Regulatory Exposure<br>Western OEMs (EV/Wind)</div>
-      <div class="metric-value" id="val-feoc">—</div>
+      <div class="metric-value" id="val-feoc">–</div>
       <div class="metric-bar-wrap"><div class="metric-bar" id="bar-feoc" style="width:0%"></div></div>
       <div class="metric-annotation" id="ann-feoc"></div>
     </div>
 
     <div class="metric-block" id="metric-routing">
       <div class="metric-label">New Producer Routing<br>Chinese Processing Share</div>
-      <div class="metric-value" id="val-routing">—</div>
+      <div class="metric-value" id="val-routing">–</div>
       <div class="metric-bar-wrap"><div class="metric-bar" id="bar-routing" style="width:0%"></div></div>
       <div class="metric-annotation" id="ann-routing"></div>
     </div>
@@ -771,7 +805,7 @@
 
     <div class="methodology">
       This tool describes supply chain concentration and flow patterns under different policy scenarios.
-      Color and metric values indicate magnitude of change from baseline — not a judgment about preferred
+      Color and metric values indicate magnitude of change from baseline, not a judgment about preferred
       outcomes. The same data point represents supply exposure for one actor and market position for another.
       Sources: USGS MCS 2025, CSIS, IEA, Lynas/MP Materials filings, Payne Institute 2025.
       <br><br>
@@ -795,18 +829,18 @@ const SCENARIOS = {
     color: "#78909c"
   },
   china_escalates_partial: {
-    label: "Export Controls — Partial",
+    label: "Export Controls: Partial",
     description: "Beijing extends export controls from processing chemicals to separated oxides and alloys. Chinese processors continue serving domestic industry at full capacity. Flow disruption concentrated in oxide and alloy trade. Extends controls already enacted in 2023-2024.",
     color: "#f4a261"
   },
   china_escalates_full: {
-    label: "Export Controls — Full",
-    description: "Export controls extended to raw ore, oxides, alloys, and finished magnets. Near-complete restriction of Chinese rare earth exports to non-domestic markets. Historical precedent: 2010 China-Japan restriction — but structural rather than temporary.",
+    label: "Export Controls: Full",
+    description: "Export controls extended to raw ore, oxides, alloys, and finished magnets. Near-complete restriction of Chinese rare earth exports to non-domestic markets. Historical precedent: 2010 China-Japan restriction, but structural rather than temporary.",
     color: "#e76f51"
   },
   western_buildout: {
     label: "Western Capacity Expansion",
-    description: "IRA FEOC exclusions enforce on schedule. DPA funding translates into operational separation capacity. Lynas Texas resolves permit delays and commissions 2027. Iluka Eneabba commissions 2026. MSP technical assistance creates nascent non-Chinese pathways in Vietnam. Planned nodes become operational. This is the policy-intent scenario — the gap between this and baseline is where execution risk lives.",
+    description: "IRA FEOC exclusions enforce on schedule. DPA funding translates into operational separation capacity. Lynas Texas resolves permit delays and commissions 2027. Iluka Eneabba commissions 2026. MSP technical assistance creates nascent non-Chinese pathways in Vietnam. Planned nodes become operational. This is the policy-intent scenario, the gap between this and baseline is where execution risk lives.",
     color: "#457b9d"
   },
   processing_integration: {
@@ -830,32 +864,32 @@ const DEMAND_COMPOSITIONS = {
 const NODES = {
   // MINING
   "China Mining":        { coords:[108,40],  type:"mining",     status:"operational", volume_kt:270, pct:"69%",    flag:"🇨🇳", policy:"none",     note:"Bayan Obo (Inner Mongolia) + Sichuan. World's largest REE producer. Quota-controlled by state-owned enterprises. LREE dominant. Vertically integrated with processing.", source:"USGS MCS 2025" },
-  "USA Mountain Pass":   { coords:[-115,35], type:"mining",     status:"operational", volume_kt:45,  pct:"11.5%",  flag:"🇺🇸", policy:"none",     note:"Mountain Pass, CA. MP Materials. LREE only — no significant HREE in bastnäsite ore. Until 2022, 95%+ of concentrate sold to Chinese processor Shenghe Resources. $400M Pentagon equity investment July 2025.", source:"USGS MCS 2025; Payne Institute 2025" },
-  "Australia Mt Weld":   { coords:[122,-29], type:"mining",     status:"operational", volume_kt:13,  pct:"3.3%",   flag:"🇦🇺", policy:"none",     note:"Mt Weld, Western Australia. Operated by Lynas. High-grade deposit but low HREE content — limits heavy rare earth separation volumes regardless of processing investment.", source:"USGS MCS 2025" },
-  "Myanmar Kachin":      { coords:[97,25],   type:"mining",     status:"operational", volume_kt:27,  pct:"~7%*",   flag:"🇲🇲", policy:"conflict", note:"⚠ ESTIMATED DATA — unverified. Kachin State ion-adsorption clay deposits. HREE-rich — critical global source of dysprosium and terbium. Conflict-affected. Near-100% flows to Chinese processors. Western buyers face legal/reputational exposure under conflict minerals frameworks.", source:"USGS MCS 2025 (est.)" },
-  "Nigeria":             { coords:[9,10],    type:"mining",     status:"operational", volume_kt:13,  pct:"3.3%",   flag:"🇳🇬", policy:"contested",note:"Plateau State. 80% YoY growth in 2024. No established non-Chinese processing relationships. Chinese capital present. France-Nigeria critical minerals agreement late 2024 — potential for future diversion.", source:"USGS MCS 2025" },
+  "USA Mountain Pass":   { coords:[-115,35], type:"mining",     status:"operational", volume_kt:45,  pct:"11.5%",  flag:"🇺🇸", policy:"none",     note:"Mountain Pass, CA. MP Materials. LREE only, no significant HREE in bastnäsite ore. Until 2022, 95%+ of concentrate sold to Chinese processor Shenghe Resources. $400M Pentagon equity investment July 2025.", source:"USGS MCS 2025; Payne Institute 2025" },
+  "Australia Mt Weld":   { coords:[122,-29], type:"mining",     status:"operational", volume_kt:13,  pct:"3.3%",   flag:"🇦🇺", policy:"none",     note:"Mt Weld, Western Australia. Operated by Lynas. High-grade deposit but low HREE content, limits heavy rare earth separation volumes regardless of processing investment.", source:"USGS MCS 2025" },
+  "Myanmar Kachin":      { coords:[97,25],   type:"mining",     status:"operational", volume_kt:27,  pct:"~7%*",   flag:"🇲🇲", policy:"conflict", note:"⚠ ESTIMATED DATA, unverified. Kachin State ion-adsorption clay deposits. HREE-rich, critical global source of dysprosium and terbium. Conflict-affected. Near-100% flows to Chinese processors. Western buyers face legal/reputational exposure under conflict minerals frameworks.", source:"USGS MCS 2025 (est.)" },
+  "Nigeria":             { coords:[9,10],    type:"mining",     status:"operational", volume_kt:13,  pct:"3.3%",   flag:"🇳🇬", policy:"contested",note:"Plateau State. 80% YoY growth in 2024. No established non-Chinese processing relationships. Chinese capital present. France-Nigeria critical minerals agreement late 2024, potential for future diversion.", source:"USGS MCS 2025" },
   "Thailand":            { coords:[101,15],  type:"mining",     status:"operational", volume_kt:13,  pct:"3.3%",   flag:"🇹🇭", policy:"contested",note:"261% YoY growth in 2024. BYD $486M EV factory investment embedding Thai production into Chinese industrial ecosystems. Chinese processing relationships consolidating.", source:"USGS MCS 2025; NAI500 2025" },
-  "Vietnam":             { coords:[105,21],  type:"mining",     status:"operational", volume_kt:1,   pct:"<1%",    flag:"🇻🇳", policy:"contested",note:"World's 2nd-largest reserves but near-zero current output. Production fell 75% YoY in 2024 due to corruption scandals delaying mining auctions. Most geopolitically contestable node — genuine Vietnamese strategic anxiety about Chinese dependence, active US MSP engagement.", source:"USGS MCS 2025" },
+  "Vietnam":             { coords:[105,21],  type:"mining",     status:"operational", volume_kt:1,   pct:"<1%",    flag:"🇻🇳", policy:"contested",note:"World's 2nd-largest reserves but near-zero current output. Production fell 75% YoY in 2024 due to corruption scandals delaying mining auctions. Most geopolitically contestable node, genuine Vietnamese strategic anxiety about Chinese dependence, active US MSP engagement.", source:"USGS MCS 2025" },
   "Russia":              { coords:[33,69],   type:"mining",     status:"operational", volume_kt:2.5, pct:"0.6%",   flag:"🇷🇺", policy:"none",     note:"Murmansk region. Stable output, primarily domestically consumed. Sanctions limit Western engagement. Strategically peripheral to Western supply chain diversification.", source:"USGS MCS 2025" },
 
   // PROCESSING
-  "China Processing":       { coords:[116,34],  type:"processing", status:"operational", volume_kt:300, pct:"~90%",   flag:"🇨🇳", policy:"none",    note:"Near-monopoly on global REE refining and separation. China Rare Earth Group + China Northern Rare Earth. Absolute advantage in solvent extraction — decades of learning-by-doing. Dec 2023 ban on technology export formalizes this as structural barrier. Produces 300,000t NdFeB magnets vs. US 1,000t target.", source:"CSIS 2025; ING Think 2025" },
+  "China Processing":       { coords:[116,34],  type:"processing", status:"operational", volume_kt:300, pct:"~90%",   flag:"🇨🇳", policy:"none",    note:"Near-monopoly on global REE refining and separation. China Rare Earth Group + China Northern Rare Earth. Absolute advantage in solvent extraction, decades of learning-by-doing. Dec 2023 ban on technology export formalizes this as structural barrier. Produces 300,000t NdFeB magnets vs. US 1,000t target.", source:"CSIS 2025; ING Think 2025" },
   "Lynas Malaysia":         { coords:[103,4],   type:"processing", status:"operational", volume_kt:17,  pct:"~5%",    flag:"🇲🇾", policy:"none",    note:"Gebeng, Kuantan. World's largest REE processor outside China. Achieved first commercial dysprosium oxide separation outside China May 2025. New HREE circuit: 1,500t/y. Constraint: Mt Weld ore has low HREE content. Malaysian operating license subject to periodic renewal.", source:"Lynas ASX May 2025" },
-  "MP Materials California":{ coords:[-118,36], type:"processing", status:"operational", volume_kt:1.3, pct:"<1%",    flag:"🇺🇸", policy:"none",    note:"Mountain Pass. Record 1,300t NdPr oxide in 2024. LREE separation operational; HREE separation mid-2026. Fort Worth magnet plant: 1,000t NdFeB target by end 2025 — less than 1% of Chinese output. Total TREO capacity 40,000t (~11.5% global).", source:"Payne Institute 2025; CSIS 2025" },
-  "Neo Performance Estonia":{ coords:[25,59],   type:"processing", status:"operational", volume_kt:2,   pct:"<1%",    flag:"🇪🇪", policy:"none",    note:"Silmet plant, Sillamäe. EU's only commercial REE separator. New magnet plant Narva (2,000t/y). Sole non-Chinese separation capacity on the European continent — severely under-scaled relative to ReArm Europe demand trajectory.", source:"Rare Earth Exchanges 2025" },
-  "Energy Fuels Utah":      { coords:[-110,38], type:"processing", status:"operational", volume_kt:0.2, pct:"<0.1%",  flag:"🇺🇸", policy:"none",    note:"White Mesa Mill, Utah. Pilot-scale HREE separation. Commercial dysprosium separation targeted late 2026. Toll processing model — no own mine. POSCO International partnership. Higher-risk, earlier-stage than MP Materials or Lynas.", source:"Rare Earth Exchanges 2025" },
+  "MP Materials California":{ coords:[-118,36], type:"processing", status:"operational", volume_kt:1.3, pct:"<1%",    flag:"🇺🇸", policy:"none",    note:"Mountain Pass. Record 1,300t NdPr oxide in 2024. LREE separation operational; HREE separation mid-2026. Fort Worth magnet plant: 1,000t NdFeB target by end 2025, less than 1% of Chinese output. Total TREO capacity 40,000t (~11.5% global).", source:"Payne Institute 2025; CSIS 2025" },
+  "Neo Performance Estonia":{ coords:[25,59],   type:"processing", status:"operational", volume_kt:2,   pct:"<1%",    flag:"🇪🇪", policy:"none",    note:"Silmet plant, Sillamäe. EU's only commercial REE separator. New magnet plant Narva (2,000t/y). Sole non-Chinese separation capacity on the European continent, severely under-scaled relative to ReArm Europe demand trajectory.", source:"Rare Earth Exchanges 2025" },
+  "Energy Fuels Utah":      { coords:[-110,38], type:"processing", status:"operational", volume_kt:0.2, pct:"<0.1%",  flag:"🇺🇸", policy:"none",    note:"White Mesa Mill, Utah. Pilot-scale HREE separation. Commercial dysprosium separation targeted late 2026. Toll processing model, no own mine. POSCO International partnership. Higher-risk, earlier-stage than MP Materials or Lynas.", source:"Rare Earth Exchanges 2025" },
 
-  // PLANNED — only shown in western_buildout scenario
-  "Lynas Texas":   { coords:[-99,29],  type:"processing", status:"planned", volume_kt:0,  pct:"planned", flag:"🇺🇸", policy:"none", note:"⚠ HALTED: Hondo (LREE) + Seadrift (HREE), Texas. Construction halted — wastewater disposal permit delays threatening 2026 target. Pentagon-funded ($258M HREE + $30M LREE). Gap between legislative intent and operational execution. Only visible under Western Capacity Expansion scenario.", source:"CSIS 2025; Lynas ASX filings" },
-  "Iluka Eneabba": { coords:[115,-29], type:"processing", status:"planned", volume_kt:17.5,pct:"planned",flag:"🇦🇺", policy:"none", note:"Eneabba, Western Australia. Australia's first integrated REE refinery. 17,500t/y capacity — largest planned non-Chinese facility globally. A$1.65B government loan. Will produce Nd, Pr, Dy, Tb oxides. Commission targeted 2026, contingent on offtake agreements. Only visible under Western Capacity Expansion scenario.", source:"CSIS 2025; NAI500 2025" },
+  // PLANNED: only shown in western_buildout scenario
+  "Lynas Texas":   { coords:[-99,29],  type:"processing", status:"planned", volume_kt:0,  pct:"planned", flag:"🇺🇸", policy:"none", note:"⚠ HALTED: Hondo (LREE) + Seadrift (HREE), Texas. Construction halted, wastewater disposal permit delays threatening 2026 target. Pentagon-funded ($258M HREE + $30M LREE). Gap between legislative intent and operational execution. Only visible under Western Capacity Expansion scenario.", source:"CSIS 2025; Lynas ASX filings" },
+  "Iluka Eneabba": { coords:[115,-29], type:"processing", status:"planned", volume_kt:17.5,pct:"planned",flag:"🇦🇺", policy:"none", note:"Eneabba, Western Australia. Australia's first integrated REE refinery. 17,500t/y capacity, largest planned non-Chinese facility globally. A$1.65B government loan. Will produce Nd, Pr, Dy, Tb oxides. Commission targeted 2026, contingent on offtake agreements. Only visible under Western Capacity Expansion scenario.", source:"CSIS 2025; NAI500 2025" },
 
   // DEMAND
-  "Defense USA":        { coords:[-77,39],  type:"demand", status:"operational", volume_kt:3,   pct:"defense", flag:"🇺🇸", policy:"none", note:"Pentagon procurement. F-35 (each requires ~920 lbs REE), submarines, missile guidance. HREE-intensive. DoD goal: complete mine-to-magnet supply chain by 2027 — but even achieving this covers <0.1% of global REE usage.", source:"CSIS 2025; DoD NDIS 2024" },
+  "Defense USA":        { coords:[-77,39],  type:"demand", status:"operational", volume_kt:3,   pct:"defense", flag:"🇺🇸", policy:"none", note:"Pentagon procurement. F-35 (each requires ~920 lbs REE), submarines, missile guidance. HREE-intensive. DoD goal: complete mine-to-magnet supply chain by 2027, but even achieving this covers <0.1% of global REE usage.", source:"CSIS 2025; DoD NDIS 2024" },
   "Defense EU":         { coords:[10,52],   type:"demand", status:"operational", volume_kt:2,   pct:"defense", flag:"🇪🇺", policy:"none", note:"NATO/EU defense procurement. Eurofighter, naval, missiles. ReArm Europe (March 2025): €800B commitment implies 3-5x defense magnet demand growth by 2030. EU defense and EU green tech OEMs now compete for the same scarce Neo Performance Estonia output.", source:"ReArm Europe 2025; CSIS 2025" },
-  "EV Wind Asia OEMs":  { coords:[127,37],  type:"demand", status:"operational", volume_kt:45,  pct:"ev_wind", flag:"🌏", policy:"none", note:"Korea + Japan OEMs — Hyundai, Toyota, Panasonic, Samsung SDI. Largest single REE demand segment globally. LREE dominant (NdPr for EV motors, wind generators). Japan reduced Chinese dependence from ~90% to ~60% since 2010.", source:"ING Think 2025; IEA 2024" },
+  "EV Wind Asia OEMs":  { coords:[127,37],  type:"demand", status:"operational", volume_kt:45,  pct:"ev_wind", flag:"🌏", policy:"none", note:"Korea + Japan OEMs, Hyundai, Toyota, Panasonic, Samsung SDI. Largest single REE demand segment globally. LREE dominant (NdPr for EV motors, wind generators). Japan reduced Chinese dependence from ~90% to ~60% since 2010.", source:"ING Think 2025; IEA 2024" },
   "EV Wind US OEMs":    { coords:[-83,42],  type:"demand", status:"operational", volume_kt:15,  pct:"ev_wind", flag:"🇺🇸", policy:"none", note:"GM, Ford, Tesla. IRA FEOC compliance pressure driving restructuring. Under 2026+ demand structure, US EV mandate softening flattens this node's growth while defense demand grows.", source:"ING Think 2025" },
-  "EV Wind EU OEMs":    { coords:[8,48],    type:"demand", status:"operational", volume_kt:12,  pct:"ev_wind", flag:"🇪🇺", policy:"none", note:"VW, BMW, Stellantis. CRMA compliance pressure. Under 2026+ demand structure, EU OEM green tech procurement competes directly with EU Defense for scarce Neo Performance Estonia output — the central unresolved tension of European industrial policy.", source:"ING Think 2025" },
-  "Consumer Electronics":{ coords:[121,31], type:"demand", status:"operational", volume_kt:25,  pct:"electronics",flag:"🌏",policy:"none",note:"Smartphones, speakers, sensors — Shanghai/Shenzhen assembly hub. Least strategically sensitive segment. MP Materials $500M Apple contract (2025) represents early attempt at non-Chinese electronics REE supply chain.", source:"Payne Institute 2025" }
+  "EV Wind EU OEMs":    { coords:[8,48],    type:"demand", status:"operational", volume_kt:12,  pct:"ev_wind", flag:"🇪🇺", policy:"none", note:"VW, BMW, Stellantis. CRMA compliance pressure. Under 2026+ demand structure, EU OEM green tech procurement competes directly with EU Defense for scarce Neo Performance Estonia output, the central unresolved tension of European industrial policy.", source:"ING Think 2025" },
+  "Consumer Electronics":{ coords:[121,31], type:"demand", status:"operational", volume_kt:25,  pct:"electronics",flag:"🌏",policy:"none",note:"Smartphones, speakers, sensors, Shanghai/Shenzhen assembly hub. Least strategically sensitive segment. MP Materials $500M Apple contract (2025) represents early attempt at non-Chinese electronics REE supply chain.", source:"Payne Institute 2025" }
 };
 
 const FLOWS = [
@@ -871,7 +905,7 @@ const FLOWS = [
   { id:"australia_lynas",         source:"Australia Mt Weld",    target:"Lynas Malaysia",          baseline_kt:13,  policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:1.2, china_escalates_full:1.4, western_buildout:1.5, processing_integration:1.1 }, note:"Core Lynas supply chain. Escalation drives surge contracts." },
   { id:"usa_mp",                  source:"USA Mountain Pass",    target:"MP Materials California", baseline_kt:40,  policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:1.2, china_escalates_full:1.4, western_buildout:1.8, processing_integration:1.1 }, note:"Previously 95%+ went to Chinese processor Shenghe. Now shifting to domestic separation." },
 
-  // Potential flows — dashed
+  // Potential flows, dashed
   { id:"nigeria_neo_potential",   source:"Nigeria",              target:"Neo Performance Estonia", baseline_kt:0,   policy:"potential",  multipliers:{ baseline:0.0, china_escalates_partial:0.0, china_escalates_full:0.1, western_buildout:0.5, processing_integration:0.0 }, note:"Contested pathway. Requires MSP technical assistance and technology transfer." },
   { id:"vietnam_lynas_potential", source:"Vietnam",              target:"Lynas Malaysia",          baseline_kt:0,   policy:"potential",  multipliers:{ baseline:0.0, china_escalates_partial:0.1, china_escalates_full:0.3, western_buildout:0.8, processing_integration:0.0 }, note:"Most promising potential route. Vietnamese reserves are HREE-bearing. Key barrier: processing know-how gap." },
   { id:"australia_iluka_planned", source:"Australia Mt Weld",    target:"Iluka Eneabba",           baseline_kt:0,   policy:"potential",  multipliers:{ baseline:0.0, china_escalates_partial:0.0, china_escalates_full:0.2, western_buildout:1.0, processing_integration:0.3 }, note:"Flow to planned Eneabba refinery. Only active under Western Capacity Expansion." },
@@ -893,8 +927,8 @@ const FLOWS = [
   { id:"mp_ev_us",                source:"MP Materials California",target:"EV Wind US OEMs",       baseline_kt:0.8, policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:2.0, china_escalates_full:3.0, western_buildout:4.0, processing_integration:1.5 }, note:"GM as founding customer. IRA Section 45X credits." },
   { id:"mp_ev_asia",              source:"MP Materials California",target:"EV Wind Asia OEMs",     baseline_kt:0.5, policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:1.5, china_escalates_full:2.5, western_buildout:3.0, processing_integration:1.2 }, note:"Via Sumitomo for Japan; Korea direct." },
 
-  { id:"neo_def_eu",              source:"Neo Performance Estonia",target:"Defense EU",            baseline_kt:1,   policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:2.0, china_escalates_full:3.0, western_buildout:3.5, processing_integration:1.5 }, note:"Only EU separator serving EU defense. 2kt capacity — severely under-scaled for ReArm Europe." },
-  { id:"neo_ev_eu",               source:"Neo Performance Estonia",target:"EV Wind EU OEMs",       baseline_kt:1,   policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:1.5, china_escalates_full:2.0, western_buildout:2.5, processing_integration:1.2 }, note:"Neo output split between defense and OEM — central EU supply tension." },
+  { id:"neo_def_eu",              source:"Neo Performance Estonia",target:"Defense EU",            baseline_kt:1,   policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:2.0, china_escalates_full:3.0, western_buildout:3.5, processing_integration:1.5 }, note:"Only EU separator serving EU defense. 2kt capacity, severely under-scaled for ReArm Europe." },
+  { id:"neo_ev_eu",               source:"Neo Performance Estonia",target:"EV Wind EU OEMs",       baseline_kt:1,   policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:1.5, china_escalates_full:2.0, western_buildout:2.5, processing_integration:1.2 }, note:"Neo output split between defense and OEM, central EU supply tension." },
 
   { id:"ef_def_usa",              source:"Energy Fuels Utah",    target:"Defense USA",             baseline_kt:0.1, policy:"standard",   multipliers:{ baseline:1.0, china_escalates_partial:2.0, china_escalates_full:3.0, western_buildout:4.0, processing_integration:1.3 }, note:"Pilot scale. Commercial HREE separation targeted late 2026." }
 ];
@@ -907,7 +941,7 @@ let currentDemand   = "green_tech";
 let currentLayer    = "all";
 
 // ============================================================
-// MAP SETUP — ORTHOGRAPHIC GLOBE
+// MAP SETUP: ORTHOGRAPHIC GLOBE
 // ============================================================
 const mapEl   = document.getElementById("map");
 const mapArea = document.getElementById("map-area");
@@ -924,7 +958,7 @@ const svg = d3.select("#map")
   .attr("preserveAspectRatio", "xMidYMid meet");
 
 // Globe state: rotation [lambda, phi] and scale
-let rotate  = [10, -20];   // initial view — centred roughly on Asia
+let rotate  = [10, -20];   // initial view, centred roughly on Asia
 let globeScale = Math.min(width, height) * 0.44;
 
 const projection = d3.geoOrthographic()
@@ -981,7 +1015,7 @@ svg.on("wheel", (event) => {
   redraw();
 }, { passive: false });
 
-// Region presets — [lambda, phi] rotation to centre that region
+// Region presets, [lambda, phi] rotation to centre that region
 const REGIONS = {
   world:    [10, -20],
   asia:     [-105, -25],
@@ -1164,7 +1198,7 @@ function updateMetrics(scenario, demandComp) {
 
 // ============================================================
 // ============================================================
-// RENDER MAP — ORTHOGRAPHIC GLOBE
+// RENDER MAP: ORTHOGRAPHIC GLOBE
 // ============================================================
 
 let flowLines, nodeGroups;
@@ -1656,14 +1690,47 @@ window.addEventListener("resize", () => {
     white-space: nowrap;
   }
   .modal-close:hover { background: #1a4f75; }
+
+    /* ---------- narrow screens ---------- */
+    @media (max-width: 900px) {
+      /* the three-column shell is 570px wide at minimum, so on a phone the right panel is
+         pushed off-canvas and overflow-x:hidden makes it unreachable. use page flow instead. */
+      .app {
+        display: block;
+        height: auto;
+        grid-template-columns: none;
+      }
+      .panel-left, .panel-right {
+        overflow-y: visible;
+        border-left: none; border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      .panel-right { border-bottom: none; }
+      .map-area {
+        height: 84vw; min-height: 320px; max-height: 470px;
+        border-bottom: 1px solid var(--border);
+      }
+      /* a vertical drag must scroll the page; a horizontal one rotates the globe */
+      #map { touch-action: pan-y; }
+      .zoom-controls { bottom: 12px; right: 12px; }
+      .region-controls { bottom: 12px; left: 12px; flex-wrap: wrap; max-width: 60%; }
+      header { flex-wrap: wrap; gap: 8px; padding: 10px 14px; }
+      .modal-card { max-width: 94vw; max-height: 88vh; overflow-y: auto; }
+      .rotate-hint { display: block; }
+    }
+    .rotate-hint {
+      display: none; font-family: var(--mono, monospace); font-size: 0.62rem;
+      letter-spacing: 0.07em; text-transform: uppercase; color: #8898a8;
+      padding: 8px 14px; border-bottom: 1px solid var(--border);
+    }
 </style>
 
 <div class="modal-overlay" id="welcome-modal">
   <div class="modal-card">
-    <div class="modal-eyebrow">Market Access X — Supply Chain Intelligence</div>
+    <div class="modal-eyebrow">Market Access X: Supply Chain Intelligence</div>
     <div class="modal-title">Global Rare Earth Supply Chain</div>
     <div class="modal-body">
-      <p>This tool maps the full rare earth supply chain — from mining and processing to end-use manufacturing — and lets you stress-test it against five policy scenarios. China controls roughly 70% of mining and 90% of processing. The concentration metrics on the right show what that means for specific actors under each scenario.</p>
+      <p>This tool maps the full rare earth supply chain, from mining and processing to end-use manufacturing, and lets you stress-test it against five policy scenarios. China controls roughly 70% of mining and 90% of processing. The concentration metrics on the right show what that means for specific actors under each scenario.</p>
     </div>
     <div class="modal-steps">
       <ol>
@@ -1671,7 +1738,7 @@ window.addEventListener("resize", () => {
         <li>Toggle <strong>Demand Structure</strong> between 2023 baseline and 2026+ trajectory</li>
         <li>Use <strong>View Filter</strong> to isolate specific parts of the chain</li>
         <li>Hover over nodes and flow lines for detailed data</li>
-        <li>Drag to rotate the globe — scroll to zoom</li>
+        <li>Drag to rotate the globe, scroll to zoom</li>
       </ol>
     </div>
     <a class="modal-download" href="ree-explainer.pdf" download="REE-Supply-Chain-Explainer.pdf">
@@ -1679,7 +1746,7 @@ window.addEventListener("resize", () => {
         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
       <div class="modal-download-thumb-placeholder" style="display:none;">📄</div>
       <div class="modal-download-text">
-        <div class="modal-download-title">REE Supply Chain — Explainer</div>
+        <div class="modal-download-title">REE Supply Chain: Explainer</div>
         <div class="modal-download-desc">Data sources, methodology, five policy scenarios, and key analytical conclusions. 3 pages.</div>
       </div>
       <div class="modal-download-cta">
@@ -1703,6 +1770,32 @@ window.addEventListener("resize", () => {
   document.getElementById("welcome-modal").addEventListener("click", function(e) {
     if (e.target === this) this.classList.add("hidden");
   });
+
+// TOUCH: a vertical gesture scrolls the page, a horizontal one rotates the globe
+(function () {
+  if (!window.matchMedia("(max-width: 900px)").matches) return;
+  const el = document.getElementById("map");
+  if (!el) return;
+  let start = null, mode = null;
+  el.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1) { mode = "rotate"; start = null; return; }
+    start = [e.touches[0].clientX, e.touches[0].clientY];
+    mode = null;
+  }, true);
+  el.addEventListener("touchmove", (e) => {
+    if (!start) return;
+    const dx = Math.abs(e.touches[0].clientX - start[0]);
+    const dy = Math.abs(e.touches[0].clientY - start[1]);
+    if (mode === null) {
+      if (dx + dy < 8) { e.stopPropagation(); return; }
+      mode = dx > dy ? "rotate" : "scroll";
+    }
+    if (mode === "scroll") e.stopPropagation();
+  }, true);
+  const clear = () => { start = null; mode = null; };
+  el.addEventListener("touchend", clear, true);
+  el.addEventListener("touchcancel", clear, true);
+})();
 </script>
 
 <div style="background:rgba(42,110,158,0.06);border:1px solid rgba(42,110,158,0.2);border-radius:8px;padding:24px 28px;margin:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;">
@@ -1711,8 +1804,8 @@ window.addEventListener("resize", () => {
         <div>
             <p style="font-size:12px;color:#1a4f75;font-family:monospace;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;">Strategic Analysis Report</p>
             <p style="font-size:16px;color:#0f1824;font-weight:500;margin-bottom:4px;">The Diversification Trap</p>
-            <p style="font-size:13px;color:#2c3444;">Why critical minerals agreements won't solve anyone's supply chain problem — and where exposure actually concentrates in the midstream.</p>
+            <p style="font-size:13px;color:#2c3444;">Why critical minerals agreements won't solve anyone's supply chain problem, and where exposure actually concentrates in the midstream.</p>
         </div>
     </div>
-    <a href="https://marketaccess-x.com/reports/cm-briefing.html" style="flex-shrink:0;display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:#2a6e9e;color:white;border-radius:4px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;">Read the report — $250 →</a>
+    <a href="https://marketaccess-x.com/reports/cm-briefing.html" style="flex-shrink:0;display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:#2a6e9e;color:white;border-radius:4px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;">Read the report: $250 →</a>
 </div>
